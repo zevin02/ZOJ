@@ -6,6 +6,8 @@
 #include"../comm/util.hpp"
 #include<sys/wait.h>
 #include<fcntl.h>
+#include"../comm/log.hpp"
+
 using namespace std;
 
 //远端会提交一份代码，一定要形成一个临时文件(假设已经有了)
@@ -19,7 +21,7 @@ using namespace std;
 namespace ns_compiler
 {
     using namespace ns_util;
-
+    using namespace ns_log;
     class Compiler
     {
     private:
@@ -36,13 +38,14 @@ namespace ns_compiler
         //需要构建出->  ./temp/1234.stderr
 
 
-        static bool Compile(const string& code_filename)//传入的是传进来代码的所在文件
+        static bool Compile(const string& code_filename)//传入的是传进来代码的所在文件，不要路径，不要后缀
         {
             //执行编译功能
             pid_t pid=fork();
             if(pid<0)
             {
-                //失败
+                //失败,
+                LOG(ERROR)<<"fork() error"<<endl;
                 return false;
             }
             else if(pid==0)
@@ -54,6 +57,7 @@ namespace ns_compiler
                 int _stderr=open(PathUtil::Error(code_filename).c_str(),O_CREAT|O_WRONLY,0644);//创建一个错误文件
                 if(_stderr<0)
                 {
+                    LOG(WARNING)<<"haven't create stderr file"<<endl;//
                     exit(2);//打开文件失败了
                 }
                 //打开文件成功了
@@ -61,6 +65,7 @@ namespace ns_compiler
                 dup2(_stderr,2);
 
                 execlp("g++","g++",ns_util::PathUtil::Src(code_filename).c_str(),"-o",ns_util::PathUtil::Extension(code_filename).c_str(),"-std=c++11",nullptr);
+                LOG(ERROR)<<"executing g++ fails,maybe parameter has wrong"<<endl;
                 exit(1);//退出
 
             }
@@ -72,6 +77,7 @@ namespace ns_compiler
                 //判断编译是否完成
                 if(FileUtil::Exists(PathUtil::Src(code_filename)))//就看是否有形成可执行文件
                 {
+                    LOG(INFO)<<PathUtil::Src(code_filename)<<" compilation success"<<endl;
                     return true;
                 }
                 else
@@ -80,6 +86,8 @@ namespace ns_compiler
                 }
 
             }   
+            LOG(ERROR)<<"Compilation failed,didn't create executable file"<<endl;
+            return false;
             
         }
     };
