@@ -1,9 +1,9 @@
 cc=g++
 CFLAG=-std=c++11
 
-compile_run:compile_run.cc
+compile_server:compile_server.cc
 	$(cc) $< -o $@  $(CFLAG)  -g  
 
 .PHONY:clean
 clean:	
-	rm -f parser compile_run
+	rm -f  compile_server ./temp/*.stderr ./temp/*.stdin ./temp/*.stdout ./temp/*.out ./temp/*.compiler_error

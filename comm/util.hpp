@@ -6,7 +6,7 @@ using namespace std;
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/time.h>
-#include<time.h>
+#include <time.h>
 namespace ns_util
 {
     string temp = "./temp/";
@@ -34,9 +34,24 @@ namespace ns_util
         }
         // 构建出错信息
 
-        static string Error(const string &file_name)
+        static string Compile_Error(const string &file_name) // 编译时报错
+        {
+            return AddSuffix(file_name, ".compiler_error");
+        }
+
+        // 运行时报错
+        static string StdError(const string &file_name) // 运行时报错
         {
             return AddSuffix(file_name, ".stderr");
+        }
+        static string Stdout(const string &file_name) // 编译时报错
+        {
+            return AddSuffix(file_name, ".stdout");
+        }
+        
+        static string Stdin(const string &file_name) // 编译时报错
+        {
+            return AddSuffix(file_name, ".stdin");
         }
     };
 
@@ -68,9 +83,9 @@ namespace ns_util
             gettimeofday(&_time, nullptr);
             struct tm tm = *localtime(&_time.tv_sec);
             static char time_str[32]{0};
-            snprintf(time_str, sizeof(time_str),\
-             "%04d-%02d-%02d %02d:%02d:%02d", \
-            tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+            snprintf(time_str, sizeof(time_str),
+                     "%04d-%02d-%02d %02d:%02d:%02d",
+                     tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
             return string(time_str);
         }
     };

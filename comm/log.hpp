@@ -24,26 +24,25 @@ namespace ns_log
         //添加日志等级
         string message="[";
         message+=level;
-        message+="]  ";
+        message+="] ";
 
         //添加日志出错的文件名
-        string message="[";
+        message+="[";
         message+=filename;
-        message+="]  ";
+        message+=":";
         //添加日志的出错行号码
-        string message="[";
         message+=to_string(line);
-        message+="]  ";
+        message+="] ";
         //添加日志的时间
-        string message="[";
+        message+="[";
         message+=TimeUtil::GetTime();
-        message+="]  ";
+        message+="] ";
 
         //cout本质是包含缓存区的
         cout<<message;//这样就会暂时存在cout缓存区中
         return std::cout;//形成一个这样的开放式的输入输出形式
     }
-    
+
     //LOG(INFO)<<"hello"
     #define LOG(level) log(#level,__FILE__,__LINE__)
 

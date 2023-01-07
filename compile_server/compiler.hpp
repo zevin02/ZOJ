@@ -54,7 +54,9 @@ namespace ns_compiler
                 //子进程就要执行编译的功能
                 //g++ src -o target -std=c++11
                 //同时需要把g++出错的结果打印到文件中
-                int _stderr=open(PathUtil::Error(code_filename).c_str(),O_CREAT|O_WRONLY,0644);//创建一个错误文件
+                umask(0);//把掩码清零
+
+                int _stderr=open(PathUtil::Compile_Error(code_filename).c_str(),O_CREAT|O_WRONLY,0644);//创建一个错误文件
                 if(_stderr<0)
                 {
                     LOG(WARNING)<<"haven't create stderr file"<<endl;//
@@ -75,19 +77,19 @@ namespace ns_compiler
                 //等待子进程
                 waitpid(pid,nullptr,0);
                 //判断编译是否完成
-                if(FileUtil::Exists(PathUtil::Src(code_filename)))//就看是否有形成可执行文件
+                if(FileUtil::Exists(PathUtil::Extension(code_filename)))//就看是否有形成可执行文件
                 {
                     LOG(INFO)<<PathUtil::Src(code_filename)<<" compilation success"<<endl;
                     return true;
                 }
                 else
                 {
+                    LOG(ERROR)<<"Compilation failed,didn't create executable file"<<endl;   
                     return false;
                 }
 
             }   
-            LOG(ERROR)<<"Compilation failed,didn't create executable file"<<endl;
-            return false;
+
             
         }
     };
