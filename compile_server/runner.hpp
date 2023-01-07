@@ -24,8 +24,25 @@ namespace ns_runner
         {
         }
 
+        //cpu_limit:程序运行时，可以使用的最大CPU资源上限
+        //mem_limit:程序运行时，可以使用的最大内存大小(KB)
+        static void SetProcLimit(int _cpu,int _mem)
+        {
+            //设置CPU时长
+            struct rlimit cpulimit;
+            cpulimit.rlim_cur=_cpu;
+            cpulimit.rlim_max=RLIM_INFINITY;
+            setrlimit(RLIMIT_CPU,&cpulimit);
+
+            //设置内存大小
+            struct rlimit memlimit;
+            memlimit.rlim_cur=_mem*1024;//转化成为kb
+            memlimit.rlim_max=RLIM_INFINITY;
+            setrlimit(RLIMIT_AS,&memlimit);
+        }
         // 只需要指明文件名，不需要带路径和后缀
-        static int Run(const string &filename)
+
+        static int Run(const string &filename,int cpu_limit,int mem_limit)
         {
             /*
                 返回值 >0:程序异常了，返回值就是对应的信号
@@ -74,6 +91,7 @@ namespace ns_runner
                 dup2(errfd,2);
                 //这个是带路径的，所以需要我们进行来执行
                 //前面是要执行谁，后面就是在命令行中怎么执行
+                SetProcLimit(cpu_limit,mem_limit);//子进程约束自己
                 execl(exe_file.c_str(),exe_file.c_str(),nullptr);
                 exit(1);
             }

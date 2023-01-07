@@ -48,7 +48,7 @@ namespace ns_util
         {
             return AddSuffix(file_name, ".stdout");
         }
-        
+
         static string Stdin(const string &file_name) // 编译时报错
         {
             return AddSuffix(file_name, ".stdin");
@@ -72,6 +72,14 @@ namespace ns_util
                 return false; // 获取属性失败，文件不存在
             }
         }
+        static string UniqueFilename(const string path)
+        {
+
+        }
+        static bool WriteFile(const string & filename,const string& code)
+        {
+            
+        }
     };
 
     class TimeUtil
@@ -88,5 +96,10 @@ namespace ns_util
                      tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
             return string(time_str);
         }
+    };
+    class  JsonUtil
+    {
+        public:
+        static void Serialize()
     };
 };

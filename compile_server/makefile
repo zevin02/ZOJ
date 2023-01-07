@@ -1,8 +1,8 @@
 cc=g++
 CFLAG=-std=c++11
-
+LFLAG=-ljsoncpp 
 compile_server:compile_server.cc
-	$(cc) $< -o $@  $(CFLAG)  -g  
+	$(cc) $< -o $@  $(CFLAG)  $(LFLAG) -g  
 
 .PHONY:clean
 clean:	
