@@ -118,6 +118,7 @@ namespace ns_util
             ofs.write(source.c_str(),source.size());
 
             ofs.close();
+            return true;
         }
 
         static bool ReadFile(const string &filename,string & content,bool keep=false)

@@ -36,29 +36,32 @@ namespace ns_compile_run
             switch (code)
             {
             case 0:
-                desc = "编译运行成功";
+                desc = "compile and run success";
                 break;
             case -1:
-                desc = "用户提交了空代码";
+                desc = "user commits empty code";
                 break;
             case -2:
-                desc = "未知错误";
+                desc = "Unknown error";
                 break;
             case -3:
                 //
                 FileUtil::ReadFile(PathUtil::Compile_Error(filename), desc, true);
                 break;
             case SIGABRT: // 6
-                desc = "内存超过范围";
+                desc = "memory out of bounds";
                 break;
             case SIGXCPU: // 24
-                desc = "CPU使用超时";
+                desc = "CPU usage time out";
                 break;
             case SIGFPE: // 8
-                desc = "浮点数溢出,除0错误";
+                desc = "divide by zero";
+                break;
+            case SIGSEGV: // 11段错误
+                desc = "Segmentation Fault";
                 break;
             default:
-                desc = "未知信号,for debug status_code=" + to_string(code);
+                desc = "unknow signal,for debug status_code=" + to_string(code);
                 break;
             }
             return desc;
@@ -70,6 +73,7 @@ namespace ns_compile_run
             reader.parse(injson, in_value);
             string code = in_value["code"].asString();   // 用户提交的代码
             string input = in_value["input"].asString(); // 用户的输入
+
             int cpulimit = in_value["cpulimit"].asInt();
             int memlimit = in_value["memlimit"].asInt();
 
@@ -137,8 +141,40 @@ namespace ns_compile_run
                 out_value["stderr"] = string_stderr;                                    //
             }
 
-            Json::FastWriter writer;
+            Json::StyledWriter writer;
             outjson = writer.write(out_value);
+
+            // 处理完之后，就要把所有生成的临时文件去除掉
+            RemoveTempFile(file_name);
+        }
+
+        static void RemoveTempFile(const string &file_name)//移除临时文件
+        {
+            // 临时文件的个数是不确定的
+            string src = PathUtil::Src(file_name);
+            // 如果存在就删除
+            if (FileUtil::Exists(src))
+                unlink(src.c_str()); // 存在就删除
+            string cpe = PathUtil::Compile_Error(file_name);
+            // 如果存在就删除
+            if (FileUtil::Exists(cpe))
+                unlink(cpe.c_str()); // 存在就删除
+            string ext = PathUtil::Extension(file_name);
+            // 如果存在就删除
+            if (FileUtil::Exists(ext))
+                unlink(ext.c_str()); // 存在就删除
+            string ster = PathUtil::StdError(file_name);
+            // 如果存在就删除
+            if (FileUtil::Exists(ster))
+                unlink(ster.c_str()); // 存在就删除
+            string stin = PathUtil::Stdin(file_name);
+            // 如果存在就删除
+            if (FileUtil::Exists(stin))
+                unlink(stin.c_str()); // 存在就删除
+            string stou = PathUtil::Stdout(file_name);
+            // 如果存在就删除
+            if (FileUtil::Exists(stou))
+                unlink(stou.c_str()); // 存在就删除
         }
     };
 };
