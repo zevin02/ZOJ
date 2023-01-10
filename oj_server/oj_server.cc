@@ -36,10 +36,11 @@ int main()
         res.set_content(html,"text/html;charset=utf8"); });
     // 用户提交代码，使用我们的判题功能
     //(1.每道题的测试用力2.compile_run)
-    
-    svr.Get(R"(/judge/(\d+))", [](const httplib::Request &req, httplib::Response &res)
+
+    svr.Get(R"(/judge/(\d+))", [](const httplib::Request &req, httplib::Response &res) 
             {
         std::string num=req.matches[1];//获得题号码,可以进行正则表达式的匹配
+        
         res.set_content("a answer","text/plain;charset=utf8"); });
 
     svr.listen("0.0.0.0", 8080);
