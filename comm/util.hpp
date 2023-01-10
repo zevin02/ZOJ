@@ -7,8 +7,9 @@ using namespace std;
 #include <sys/types.h>
 #include <sys/time.h>
 #include <time.h>
-#include<fstream>
-#include<atomic>
+#include <fstream>
+#include <boost/algorithm/string.hpp>
+#include <atomic>
 namespace ns_util
 {
     class TimeUtil
@@ -97,47 +98,55 @@ namespace ns_util
                 return false; // 获取属性失败，文件不存在
             }
         }
-        static string UniqueFilename()//这样就形成了一个唯一的文件名,毫秒即时间戳+uid原子性自增
+        static string UniqueFilename() // 这样就形成了一个唯一的文件名,毫秒即时间戳+uid原子性自增
         {
             string ms = TimeUtil::GetTimeMs();
             static atomic<uint64_t> id(0);
-            string uid= to_string(id);
-            id++;//这个就是一个原子性的自增
-            return ms+"_"+uid;
-
+            string uid = to_string(id);
+            id++; // 这个就是一个原子性的自增
+            return ms + "_" + uid;
         }
         static bool WriteFile(const string &filename, const string &source)
         {
-            ofstream ofs(filename,ios::out|ios::binary);
-            if(!ofs.is_open())
+            ofstream ofs(filename, ios::out | ios::binary);
+            if (!ofs.is_open())
             {
-                //没有被打开成功
+                // 没有被打开成功
                 ofs.close();
                 return false;
             }
-            ofs.write(source.c_str(),source.size());
+            ofs.write(source.c_str(), source.size());
 
             ofs.close();
             return true;
         }
 
-        static bool ReadFile(const string &filename,string & content,bool keep=false)
+        static bool ReadFile(const string &filename, string &content, bool keep = false)
         {
-            ifstream ifs(filename,ios::in|ios::binary);
-            if(!ifs.is_open())
-            {   
+            ifstream ifs(filename, ios::in | ios::binary);
+            if (!ifs.is_open())
+            {
                 ifs.close();
                 return false;
             }
             string line;
-            while(getline(ifs,line))
+            while (getline(ifs, line))
             {
-                //getline不会保留换行所以如果使用这个的话，所有的换行我们都不会保留
-                content+=line;
-                content+=(keep?"\n":"");//如果上层需要这个换行我们就需要保留
+                // getline不会保留换行所以如果使用这个的话，所有的换行我们都不会保留
+                content += line;
+                content += (keep ? "\n" : ""); // 如果上层需要这个换行我们就需要保留
             }
 
             return true;
+        }
+    };
+
+    class StringUtil
+    {
+    public:
+        static void CutString(const string &target, vector<string> *out, string sep) // 字符串切分
+        {
+            boost::split(*out, target, boost::is_any_of(sep), boost::token_compress_on); // 压缩中间的分隔符,把所有的压缩成一个\3
         }
     };
 
