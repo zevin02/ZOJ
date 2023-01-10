@@ -24,7 +24,7 @@ namespace ns_model
     {
         string number; // 题目的编号
         string title;  // 题目的标题
-        string start;
+        string star;
         int cpulimit;
         int memlimit;
         string desc; //
@@ -73,7 +73,7 @@ namespace ns_model
                 Question q;
                 q.number=out[0];
                 q.title=out[1];
-                q.start=out[2];
+                q.star=out[2];
                 q.cpulimit=stoi(out[3]);
                 q.memlimit=stoi(out[4]);
                 string question_desc="./questions/"+q.number+"/desc.txt";
@@ -88,6 +88,7 @@ namespace ns_model
 
             LOG(INFO)<<"load topics success"<<endl;
             ifs.close();
+            return true;
         }
 
         bool GetAllQuestion(vector<Question> &out) // 获得所有题目
