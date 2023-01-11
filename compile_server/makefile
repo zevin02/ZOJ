@@ -1,6 +1,6 @@
 cc=g++
 CFLAG=-std=c++11
-LFLAG=-ljsoncpp -lpthread
+LFLAG=-ljsoncpp -lpthread -lboost_system -lboost_filesystem
 compile_server:compile_server.cc
 	$(cc) $< -o $@  $(CFLAG)  $(LFLAG) -g  
 

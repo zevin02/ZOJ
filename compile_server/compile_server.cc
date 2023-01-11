@@ -16,13 +16,16 @@ int main(int argc,char* argv[])
   svr.Post("/compile_run", [](const httplib::Request &req, httplib::Response &res)
            {
       string injson=req.body;
-        string outjson;
+      string outjson;
+      LOG(INFO)<<"获得请求"<<endl;
       if(!injson.empty())
       {
         //传入的数据不为空
+        cout<<injson<<endl;
         CompileRun::Start(injson, outjson);
+
         res.set_content(outjson,"application/json;charset=utf-8");
-        
+
       } });
   
   svr.listen("0.0.0.0",atoi(argv[1])); // 启动http服务

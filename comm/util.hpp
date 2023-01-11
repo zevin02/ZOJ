@@ -10,6 +10,7 @@ using namespace std;
 #include <fstream>
 #include <boost/algorithm/string.hpp>
 #include <atomic>
+#include<vector>
 namespace ns_util
 {
     class TimeUtil
