@@ -8,7 +8,7 @@
 #include "oj_view.hpp"
 #include <jsoncpp/json/json.h>
 #include <mutex>
-
+#include <algorithm>
 using namespace std;
 namespace ns_control
 {
@@ -16,7 +16,7 @@ namespace ns_control
     using namespace ns_log;
     using namespace ns_util;
     using namespace ns_model;
-   
+
     // 提供服务的主机，一台机器对应一个后端编译运行服务
     class Machine
     {
@@ -70,6 +70,12 @@ namespace ns_control
                 _mtx->unlock();
             }
             return 0;
+        }
+        void ResetLoad()
+        {
+            _mtx->lock();
+            load=0;
+            _mtx->unlock();
         }
     };
     // 负载均衡的模块,根据配置文件，把所有预先配置的文件全部都加载进来
@@ -161,14 +167,15 @@ namespace ns_control
         {
             // 把在线主机的id放到offline中
             unique_lock<mutex> lock(mtx);
-            for(auto iter=online.begin();iter!=online.end();iter++)
+            for (auto iter = online.begin(); iter != online.end(); iter++)
             {
                 if (*iter == which)
                 {
+                    machine[which].ResetLoad();
                     // 要离线的主机找到了
                     // 就要把这个元素给删除掉
                     online.erase(iter);
-                    offline.push_back(*iter);
+                    offline.push_back(which);
                     break; // 这样就不要考虑迭代器失效的问题
                 }
             }
@@ -192,9 +199,12 @@ namespace ns_control
 
         void OnlineMachine()
         {
-            //上线,所有主机离线的时候进行统一上线
-            
-
+            // 上线,所有主机离线的时候进行统一上线
+            unique_lock<mutex> lock(mtx);
+            // 把offline的东西插入到online中
+            online.insert(online.end(), offline.begin(), offline.end());
+            offline.erase(offline.begin(), offline.end());
+            LOG(INFO) << "所有的主机上线了" << endl;
         }
     };
 
@@ -220,6 +230,8 @@ namespace ns_control
             {
                 // 获得成功,将所有的题目数据构成一个网页
                 // 把所有题目转化成html
+                sort(all.begin(), all.end(), [](const Question &s1, const Question &s2)
+                     { return stoi(s1.number) < stoi(s2.number); });
                 _view.AllExpand(all, html);
                 return true;
             }
@@ -245,7 +257,10 @@ namespace ns_control
                 return false;
             }
         }
-
+        void Recoverymachine()
+        {
+            load_balance.OnlineMachine();
+        }
         void Judge(const string &number, const string &injson, string &outjson) // 判题
         {
             // 根据题目可以直接拿到对应的题目细节
@@ -274,48 +289,43 @@ namespace ns_control
             {
                 int id = 0;
                 Machine m;
-                if (load_balance.SmartChoice(&id, m))
-                {
-                    LOG(INFO) << "选择主机成功,主机ID:" << id << "详情:" << m.ip << ":" << m.port << endl;
-                    // 发起http请求
-                    // 充当一个客户端的角色
-                    httplib::Client cli(m.ip, m.port); // 绑定主机和端口
-                    // 发起请求
-                    m.Increasement();
-                    if(auto res = cli.Post("/compile_run", compile_string, "application/json;charset=utf-8"))
-                    // if (auto res = cli.Post("/complie_run", compile_string, "application/json;charset=utf-8")) // 第一个参数是请求的是哪个服务
-                    {
-                        // 成功了,完成了对应的请求
-                        // 状态码为200的时候才是完成成功的
-                        if (res->status == 200)
-                        {
-                            outjson = res->body; // outjson里面就是对应的返回回来的数据
-                            m.Decreasement();
-                            LOG(INFO)<<"请求编译运行服务成功"<<endl;
-                            break;
-                        }
-                        
-                        // 不等于200,访问到目标主机但是结果是不对的
-                        //  请求成功了就要减少负载
-                        LOG(ERROR)<<"请求服务失败status="<<res->status<<endl;
-                        m.Decreasement();
-                        break;
-                    }
-                    else
-                    {
-                        // 请求失败
-                        // 没有得到任何响应
-                        LOG(ERROR) << "当前请求的主机无响应,主机ID:" << id << "详情:" << m.ip << ":" << m.port << ",当前主机可能已经离线" << endl;
-
-                        load_balance.Offlinemachine(id);//把某台主机下线
-                        load_balance.ShowOnline();//只是用来调试
-                    }
-                }
-                else
+                if (!load_balance.SmartChoice(&id, m))
                 {
                     break;
                 }
+                // 发起http请求
+                // 充当一个客户端的角色
+                httplib::Client cli(m.ip, m.port); // 绑定主机和端口
+                // 发起请求
+                m.Increasement();
+                LOG(INFO) << "选择主机成功,主机ID:" << id << "详情:" << m.ip << ":" << m.port << "该主机的负载情况:" << m.load << endl;
 
+                if (auto res = cli.Post("/compile_run", compile_string, "application/json;charset=utf-8"))
+                {
+                    // 成功了,完成了对应的请求
+                    // 状态码为200的时候才是完成成功的
+                    if (res->status == 200)
+                    {
+                        outjson = res->body; // outjson里面就是对应的返回回来的数据
+                        m.Decreasement();
+                        LOG(INFO) << "请求编译运行服务成功" << endl;
+                        break;
+                    }
+
+                    // 不等于200,访问到目标主机但是结果是不对的
+                    //  请求成功了就要减少负载
+                    LOG(ERROR) << "请求服务失败status=" << res->status << endl;
+                    m.Decreasement();
+                }
+                else
+                {
+                    // 请求失败
+                    // 没有得到任何响应
+                    LOG(ERROR) << "当前请求的主机无响应,主机ID:" << id << "详情:" << m.ip << ":" << m.port << ",当前主机可能已经离线" << endl;
+
+                    load_balance.Offlinemachine(id); // 把某台主机下线
+                    load_balance.ShowOnline();       // 只是用来调试
+                }
             }
 
             // 将结果给到outjson

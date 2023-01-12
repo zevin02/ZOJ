@@ -21,7 +21,6 @@ int main(int argc,char* argv[])
       if(!injson.empty())
       {
         //传入的数据不为空
-        cout<<injson<<endl;
         CompileRun::Start(injson, outjson);
 
         res.set_content(outjson,"application/json;charset=utf-8");
