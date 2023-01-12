@@ -2,7 +2,8 @@
 // 最重要的就是进行逻辑控制
 #include <iostream>
 #include <string>
-#include "oj_model.hpp"
+// #include "oj_model.hpp"
+#include"oj_modelsql.hpp"
 #include "../comm/util.hpp"
 #include "../comm/log.hpp"
 #include "oj_view.hpp"

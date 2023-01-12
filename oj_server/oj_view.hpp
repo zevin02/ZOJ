@@ -3,7 +3,9 @@
 #include <iostream>
 #include <ctemplate/template.h>
 
-#include "oj_model.hpp"
+// #include "oj_model.hpp"
+#include"oj_modelsql.hpp"
+
 using namespace ns_model;
 
 namespace ns_view
