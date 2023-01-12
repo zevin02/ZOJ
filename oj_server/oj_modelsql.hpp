@@ -77,34 +77,22 @@ namespace ns_model
                 MYSQL_ROW row = mysql_fetch_row(res);
                 Question q;
                 q.number = row[0]; // 获取第一列的数据
-                LOG(DEBUG) << q.number << "OK" << endl;
                 q.title = row[1];
-                LOG(DEBUG) << "OK" << endl;
-                // LOG(DEBUG)<<row[2]<<endl;
                 q.star = row[2];
-                LOG(DEBUG) << "OK" << endl;
                 q.desc = row[3];
-                LOG(DEBUG) << "OK" << endl;
                 q.header = row[4];
-                LOG(DEBUG) << "OK" << endl;
 
                 q.tail = row[5];
-                LOG(DEBUG) << "OK" << endl;
 
                 q.cpulimit = atoi(row[6]);
-                LOG(DEBUG) << "OK" << endl;
 
                 q.memlimit = atoi(row[7]);
-                LOG(DEBUG) << "OK" << endl;
 
                 out.push_back(q);
             }
             // 分析结果
-            LOG(INFO) << "提取数据成功" << endl;
 
-            // free(res);
             mysql_free_result(res);
-            LOG(INFO) << "释放数据成功" << endl;
 
             mysql_close(my); // 关闭mysql链接
             LOG(INFO) << "数据库关闭成功" << endl;

@@ -3,7 +3,7 @@
 #include <iostream>
 #include <string>
 // #include "oj_model.hpp"
-#include"oj_modelsql.hpp"
+#include "oj_modelsql.hpp"
 #include "../comm/util.hpp"
 #include "../comm/log.hpp"
 #include "oj_view.hpp"
@@ -75,7 +75,7 @@ namespace ns_control
         void ResetLoad()
         {
             _mtx->lock();
-            load=0;
+            load = 0;
             _mtx->unlock();
         }
     };
@@ -93,42 +93,54 @@ namespace ns_control
     public:
         LoadBalance()
         {
-            assert(LoadConf(machinelist)); // 启动的时候就加载进来了
-            LOG(INFO) << "加载后端服务器配置文件成功" << endl;
+            string sql="select * from machine_list";
+            assert(LoadConf(machinelist,sql)); // 启动的时候就加载进来了
+            // LoadConf(machinelist,sql); // 启动的时候就加载进来了
+            LOG(INFO) << "加载后端服务器载入成功" << endl;
         }
         ~LoadBalance()
         {
         }
-        bool LoadConf(const string &machinelist)
+
+        bool LoadConf(const string &machinelist,string & sql)
         {
-            // 把主机加载进来
-            ifstream ifs(machinelist, ios::in | ios::binary);
-            if (!ifs.is_open())
+            MYSQL *my = mysql_init(nullptr); // 创建一个mysql句柄
+            // 连接数据库成功
+            if (mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0) == nullptr) // 连接数据库
             {
-                LOG(FATAL) << "加载" << machinelist << "配置文件失败" << endl;
+                LOG(FATAL) << "连接数据库失败" << endl;
                 return false;
             }
-            string line;
-            while (getline(ifs, line))
+            LOG(INFO) << "连接数据库成功" << endl;
+            // 执行sql语句
+            if (mysql_query(my, sql.c_str()) != 0)
             {
-                vector<string> out;
-                StringUtil::CutString(line, &out, ":");
-                if (out.size() != 2)
-                {
-                    LOG(WARNING) << "切分" << line << "失败" << endl;
-                    continue;
-                }
+                LOG(WARNING) << sql << " sql语句执行失败 " << endl;
+                return false;
+            }
+            // 提取结果
+            MYSQL_RES *res = mysql_store_result(my);
+
+            int row = mysql_num_rows(res);   // 获得行树
+            int col = mysql_num_fields(res); // 获得列数
+            for (int i = 0; i < row; i++)
+            {
+                MYSQL_ROW row = mysql_fetch_row(res);
                 Machine ma;
+                ma.ip = row[0];
+                ma.port = atoi(row[1]);
                 ma._mtx = new mutex();
-                ma.ip = out[0];
-                ma.port = stoi(out[1]);
                 ma.load = 0;
                 online.push_back(machine.size()); // 放进去对应的id
                 machine.push_back(move(ma));
             }
-            ifs.close();
+            mysql_free_result(res);
+
+            mysql_close(my); // 关闭mysql链接
+            LOG(INFO) << "数据库关闭成功" << endl;
             return true;
         }
+
         // 智能的在在线机器中选择
         bool SmartChoice(int *id, Machine &m)
         {

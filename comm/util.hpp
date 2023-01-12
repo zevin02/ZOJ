@@ -10,7 +10,8 @@ using namespace std;
 #include <fstream>
 #include <boost/algorithm/string.hpp>
 #include <atomic>
-#include<vector>
+#include <vector>
+#include <mysql/mysql.h>
 namespace ns_util
 {
     class TimeUtil
@@ -149,6 +150,37 @@ namespace ns_util
         {
             boost::split(*out, target, boost::is_any_of(sep), boost::token_compress_on); // 压缩中间的分隔符,把所有的压缩成一个\3
         }
+    };
+
+    class Mysql
+    {
+    private:
+        string _host;
+        int _port;
+        string _db;
+        string _user;
+        string _passwd;
+    private:
+        MYSQL *my;
+        MYSQL_RES* res;
+    public:
+        Mysql(string host, int port, string db, string user, string passwd)
+            : _host(host), _port(port), _db(db), _user(user), _passwd(passwd)
+        {
+            my = mysql_init(nullptr);                                                                                      // 创建一个mysql句柄
+            assert(mysql_real_connect(my, _host.c_str(), _user.c_str(), _passwd.c_str(), _db.c_str(), _port, nullptr, 0)); // 连接数据库
+        }
+        ~Mysql()
+        {
+            mysql_close(my); // 关闭mysql链接
+        }
+        bool Store(const string & sql)
+        {
+            res = mysql_store_result(my);
+            
+            return true;
+        }
+        
     };
 
 };
