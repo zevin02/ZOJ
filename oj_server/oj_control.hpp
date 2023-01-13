@@ -10,6 +10,7 @@
 #include <jsoncpp/json/json.h>
 #include <mutex>
 #include <algorithm>
+#include <set>
 using namespace std;
 namespace ns_control
 {
@@ -80,29 +81,52 @@ namespace ns_control
         }
     };
     // 负载均衡的模块,根据配置文件，把所有预先配置的文件全部都加载进来
-    const string machinelist = "./conf/service_machine.conf";
     class LoadBalance
     {
     private:
-        vector<Machine> machine; // 里面的所有的机器,我们使用下标来充当主机编号
-        vector<int> online;      // 代表的是所有在线的主机
-        vector<int> offline;     // 离线的主机
+        map<int, Machine> machine; // 里面的所有的机器,我们使用端口号来充当主机编号,只要是预先添加到了系统中，就需要加载进来，里面就是我们预先设置了所有会运用的后端机器
+        set<int> online;           // 代表的是所有在线的主机,使用端口号来用作唯一的标识
+        set<int> offline;          // 使用布隆过滤器来判断是否存在
+
         // 保证在选择主机的时候，需要保证数据的安全
         mutex mtx;
 
     public:
         LoadBalance()
         {
-            string sql="select * from machine_list";
-            assert(LoadConf(machinelist,sql)); // 启动的时候就加载进来了
+            string sql = "select * from machine_list";
+            LoadConf(sql); // 启动的时候就加载进来了
             // LoadConf(machinelist,sql); // 启动的时候就加载进来了
+            ShowMachine();
             LOG(INFO) << "加载后端服务器载入成功" << endl;
         }
         ~LoadBalance()
         {
         }
 
-        bool LoadConf(const string &machinelist,string & sql)
+        void AskCompile(const string &ip, const int &port) // 发起后端请求判断是否在线
+        {
+            httplib::Client cli("127.0.0.1", port);
+            auto res = cli.Get("/oj_judgeonline");
+            if (res == nullptr) // 如果访问没有结果为空
+            {
+                LOG(INFO) << "machine:" << port << "接入失败" << endl;
+
+                offline.insert(port);
+            }
+            else
+            {
+                // 请求成功,说明该机器在线
+                LOG(INFO) << "machine:" << port << "接入成功" << endl;
+                online.insert(port);
+                if (isDebugEnable())
+                {
+                    ShowMachine();
+                }
+            }
+        }
+
+        bool LoadConf(const string &sql) // 在数据库中加载机器
         {
             MYSQL *my = mysql_init(nullptr); // 创建一个mysql句柄
             // 连接数据库成功
@@ -131,8 +155,11 @@ namespace ns_control
                 ma.port = atoi(row[1]);
                 ma._mtx = new mutex();
                 ma.load = 0;
-                online.push_back(machine.size()); // 放进去对应的id
-                machine.push_back(move(ma));
+                // online.push_back(machine.size()); // 放进去对应的id
+                // 需要对每个服务器发起http请求，如果在线的话，就添加到online服务器中,否则就添加到offline中
+                AskCompile("127.0.0.1", ma.port);
+
+                machine[ma.port] = ma;
             }
             mysql_free_result(res);
 
@@ -159,19 +186,21 @@ namespace ns_control
                 LOG(FATAL) << "所有后端的编译主机已经全部离线了，需要尽快修复" << endl;
                 return false;
             }
-            // 选择这个时刻负载最小的机器
-            // 通过遍历的方式
-            uint64_t min_load = machine[online[0]].load; //
-            *id = online[0];
-            m = machine[online[0]];
-            for (int i = 1; i < online.size(); i++)
+
+            int port = *(online.begin());
+            uint64_t min_load = machine[port].load;
+            for (auto &port : online)
             {
-                if (min_load > machine[online[i]].load)
+                if (min_load >= machine[port].load)
                 {
-                    min_load = machine[online[i]].load; // 更新最小负载
-                    *id = online[i];
-                    m = machine[online[i]];
+                    min_load = machine[port].load;
+                    *id = port;
+                    m = machine[port];
                 }
+            }
+            if (isDebugEnable())
+            {
+                LOG(DEBUG) << m.port << endl;
             }
             return true; // 找到了对应的主机
         }
@@ -187,13 +216,14 @@ namespace ns_control
                     machine[which].ResetLoad();
                     // 要离线的主机找到了
                     // 就要把这个元素给删除掉
-                    online.erase(iter);
-                    offline.push_back(which);
+                    online.erase(which); // 删除这个元素对应的数据
+
+                    offline.insert(which);
                     break; // 这样就不要考虑迭代器失效的问题
                 }
             }
         }
-        void ShowOnline()
+        void ShowMachine()
         {
             unique_lock<mutex> lock(mtx);
             cout << "当前在线主机列表:" << endl;
@@ -210,14 +240,20 @@ namespace ns_control
             cout << endl;
         }
 
-        void OnlineMachine()
+        void OnlineMachine() // 就需要发送过去http请求
         {
             // 上线,所有主机离线的时候进行统一上线
             unique_lock<mutex> lock(mtx);
             // 把offline的东西插入到online中
-            online.insert(online.end(), offline.begin(), offline.end());
-            offline.erase(offline.begin(), offline.end());
+            for (auto &ma : machine)
+            {
+                AskCompile("127.0.0.1", ma.second.port);
+            }
             LOG(INFO) << "所有的主机上线了" << endl;
+        }
+        void OnlineAdd(const string &ip, const int port) // 后端机器上线，添加到在线列表中
+        {
+            online.insert(port);
         }
     };
 
@@ -235,6 +271,19 @@ namespace ns_control
         }
         ~Control()
         {
+        }
+
+        bool Access(const string &injson, string &out)
+        {
+            Json::Reader reader;
+            Json::Value in_value;
+            reader.parse(injson, in_value);
+            string ip = in_value["ip"].asString();
+            int port = in_value["port"].asInt();
+            load_balance.OnlineAdd(ip, port);
+            out = "机器" + to_string(port) + "连接成功";
+            LOG(INFO) << out << endl;
+            return true;
         }
         bool GetAllQuestions(string *html) // 根据题目数据构建网页
         {
@@ -334,10 +383,10 @@ namespace ns_control
                 {
                     // 请求失败
                     // 没有得到任何响应
-                    LOG(ERROR) << "当前请求的主机无响应,主机ID:" << id << "详情:" << m.ip << ":" << m.port << ",当前主机可能已经离线" << endl;
+                    LOG(ERROR) << "当前请求的主机无响应,主机ID:" << m.ip << ":" << m.port << ",当前主机可能已经离线" << endl;
 
                     load_balance.Offlinemachine(id); // 把某台主机下线
-                    load_balance.ShowOnline();       // 只是用来调试
+                    load_balance.ShowMachine();      // 只是用来调试
                 }
             }
 

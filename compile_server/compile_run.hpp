@@ -27,7 +27,7 @@ namespace ns_compile_run
         // stdout:输出结果
         // stderr：程序运行完的错误结果
 
-        static string CodeToDesc(int code, const string &filename)
+        static string CodeToDesc(int code, const string &filename)//从返回的值获得对应的描述
         {
             // code>0信号导致崩溃
             // code<0编译运行时出现的内部错误
@@ -46,7 +46,7 @@ namespace ns_compile_run
                 break;
             case -3:
                 //
-                FileUtil::ReadFile(PathUtil::Compile_Error(filename), desc, true);
+                FileUtil::ReadFile(PathUtil::Compile_Error(filename), desc, true);//-3就是编译错误,所以就需要读取编译错误的文件
                 break;
             case SIGABRT: // 6
                 desc = "memory out of bounds";
@@ -66,8 +66,9 @@ namespace ns_compile_run
             }
             return desc;
         }
-        static void Start(const string &injson, string &outjson)
+        static void Start(const string &injson, string &outjson)//由oj_server通过http发过来的网络请求,我们需要进行执行
         {
+
             Json::Value in_value;
             Json::Reader reader;
             reader.parse(injson, in_value);
@@ -128,16 +129,17 @@ namespace ns_compile_run
             }
 
         end:
+            //构建返回的json串
             out_value["status"] = status_code;                        // 未知错误
-            out_value["reason"] = CodeToDesc(status_code, file_name); //
+            out_value["reason"] = CodeToDesc(status_code, file_name); // 获得描述原因
             if (status_code == 0)
             {
                 // 整个过程全部成功
                 string string_stdout;
-                FileUtil::ReadFile(PathUtil::Stdout(file_name), string_stdout, true);
+                FileUtil::ReadFile(PathUtil::Stdout(file_name), string_stdout, true);//把运行的输出结果获得并返回给上层
                 out_value["stdout"] = string_stdout;
                 string string_stderr;
-                FileUtil::ReadFile(PathUtil::StdError(file_name), string_stderr, true); // 在文件中
+                FileUtil::ReadFile(PathUtil::StdError(file_name), string_stderr, true); // 把运行的错误结果返回给上层
                 out_value["stderr"] = string_stderr;                                    //
             }
 
@@ -150,11 +152,14 @@ namespace ns_compile_run
 
         static void RemoveTempFile(const string &file_name)//移除临时文件
         {
+            
             // 临时文件的个数是不确定的
+            //但是由多少文件是确定的，所以就可以判断，如果存在就删除
+            
             string src = PathUtil::Src(file_name);
             // 如果存在就删除
             if (FileUtil::Exists(src))
-                unlink(src.c_str()); // 存在就删除
+                unlink(src.c_str()); // 存在就删除,unlink就是把该文件的inode减少，如果减少到0说明就直接删除了
             string cpe = PathUtil::Compile_Error(file_name);
             // 如果存在就删除
             if (FileUtil::Exists(cpe))

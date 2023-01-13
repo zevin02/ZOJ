@@ -91,12 +91,16 @@ namespace ns_runner
                 dup2(errfd,2);
                 //这个是带路径的，所以需要我们进行来执行
                 //前面是要执行谁，后面就是在命令行中怎么执行
+                //约束进程的状态
                 SetProcLimit(cpu_limit,mem_limit);//子进程约束自己
+                //运行可执行文件
+                //./a.out，并把输出的结果放到临时文件中
                 execl(exe_file.c_str(),exe_file.c_str(),nullptr);
                 exit(1);
             }
             else
             {
+                //由父进程来关闭文件，避免内存泄漏
                 close(infd);
                 close(outfd);
                 close(errfd);

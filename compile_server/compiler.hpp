@@ -45,7 +45,7 @@ namespace ns_compiler
             if(pid<0)
             {
                 //失败,
-                LOG(ERROR)<<"fork() error"<<endl;
+                LOG(ERROR)<<"fork() error"<<endl;//启动等级的开关
                 return false;
             }
             else if(pid==0)

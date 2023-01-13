@@ -25,8 +25,8 @@ namespace ns_model
     {
         string number; // 题目的编号
         string title;  // 题目的标题
-        string star;
-        int cpulimit;
+        string star;   // 题目的难度
+        int cpulimit;  
         int memlimit;
         string desc; //
         string header;

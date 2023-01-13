@@ -51,6 +51,7 @@ namespace ns_util
             path += suffix;
             return path;
         }
+        //
         static string Src(const string &file_name)
         {
             return AddSuffix(file_name, ".cpp");
@@ -90,7 +91,7 @@ namespace ns_util
         {
             // stat来判断文件是否存在
             struct stat st;
-            int ret = stat(path.c_str(), &st);
+            int ret = stat(path.c_str(), &st); // 如果能够获得文件的属性，就成功
             if (ret == 0)
             {
                 return true; // 获取属性成功，文件存在
@@ -108,7 +109,7 @@ namespace ns_util
             id++; // 这个就是一个原子性的自增
             return ms + "_" + uid;
         }
-        static bool WriteFile(const string &filename, const string &source)
+        static bool WriteFile(const string &filename, const string &source) // 写文件
         {
             ofstream ofs(filename, ios::out | ios::binary);
             if (!ofs.is_open())
@@ -123,7 +124,7 @@ namespace ns_util
             return true;
         }
 
-        static bool ReadFile(const string &filename, string &content, bool keep = false)
+        static bool ReadFile(const string &filename, string &content, bool keep = false)//读取文件数据
         {
             ifstream ifs(filename, ios::in | ios::binary);
             if (!ifs.is_open())
@@ -138,6 +139,7 @@ namespace ns_util
                 content += line;
                 content += (keep ? "\n" : ""); // 如果上层需要这个换行我们就需要保留
             }
+            ifs.close();
 
             return true;
         }
@@ -160,9 +162,11 @@ namespace ns_util
         string _db;
         string _user;
         string _passwd;
+
     private:
         MYSQL *my;
-        MYSQL_RES* res;
+        MYSQL_RES *res;
+
     public:
         Mysql(string host, int port, string db, string user, string passwd)
             : _host(host), _port(port), _db(db), _user(user), _passwd(passwd)
@@ -174,13 +178,13 @@ namespace ns_util
         {
             mysql_close(my); // 关闭mysql链接
         }
-        bool Store(const string & sql)
+        bool Store(const string &sql)
         {
             res = mysql_store_result(my);
-            
+
             return true;
         }
-        
     };
+
 
 };

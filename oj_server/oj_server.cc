@@ -3,19 +3,16 @@
 #include "oj_control.hpp"
 #include <signal.h>
 using namespace ns_control;
-static Control *ctrl_ptr=nullptr;
-void handler(int signo)
-{
-    ctrl_ptr->Recoverymachine();
-}
+static Control *ctrl_ptr = nullptr;
 
 int main()
 {
-    signal(SIGQUIT, handler);
+    DebugEnable(); // 把调试开关打开
+
     // 用户请求的服务器路由功能
     httplib::Server svr;
     Control ctrl; // 所以对路由的处理都交给了ctrl来处理
-    ctrl_ptr=&ctrl;
+    ctrl_ptr = &ctrl;
     // 用户要获取所有的题目列表
     // mysql版本
     // 1.在数据库设计中可以远程登陆的Mysql用户，并给他赋予权利oj_client,这个用户只能看到oj这个数据库
@@ -26,7 +23,7 @@ int main()
 
     // 3.开始编码，访问数据库
 
-    svr.set_base_dir("./www_root");
+    svr.set_base_dir("./www_root");                                                     // 设置根目录
     svr.Get("/all_question", [&](const httplib::Request &req, httplib::Response &res) { // 返回的一张包含所有题目的网页
         string html;
         if (ctrl.GetAllQuestions(&html))
@@ -48,10 +45,18 @@ int main()
     svr.Post(R"(/judge/(\d+))", [&](const httplib::Request &req, httplib::Response &res)
              {
         std::string num=req.matches[1];//获得题号码,可以进行正则表达式的匹配
+        // cout<<req.matches[0]<<endl;
         string ret;
         ctrl.Judge(num,req.body,ret);//在正文中就存在请求的json串
 
         res.set_content(ret,"application/json;charset=utf8"); });
+
+    svr.Post("/online", [&](const httplib::Request &req, httplib::Response &res)
+             {
+                 string out;
+                 ctrl.Access(req.body, out);
+                 res.set_content(out, "text/plain;cahrset=utf-8");
+             });
 
     svr.listen("0.0.0.0", 8080);
     return 0;
