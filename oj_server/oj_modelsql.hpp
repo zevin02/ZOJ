@@ -21,17 +21,7 @@ namespace ns_model
 {
     using namespace ns_util;
     using namespace ns_log;
-    struct Question
-    {
-        string number; // 题目的编号
-        string title;  // 题目的标题
-        string star;   // 题目的难度
-        int cpulimit;  
-        int memlimit;
-        string desc; //
-        string header;
-        string tail; // 题目的测试用例
-    };
+
 
     string host = "127.0.0.1";
     int port = 3306;
@@ -59,7 +49,7 @@ namespace ns_model
                 LOG(FATAL) << "连接数据库失败" << endl;
                 return false;
             }
-            LOG(INFO) << "连接数据库成功" << endl;
+            // LOG(INFO) << "连接数据库成功" << endl;
             // 执行sql语句
             if (mysql_query(my, sql.c_str()) != 0)
             {
@@ -95,7 +85,7 @@ namespace ns_model
             mysql_free_result(res);
 
             mysql_close(my); // 关闭mysql链接
-            LOG(INFO) << "数据库关闭成功" << endl;
+            // LOG(INFO) << "数据库关闭成功" << endl;
             return true;
         }
         bool GetAllQuestion(vector<Question> &out) // 获得所有题目

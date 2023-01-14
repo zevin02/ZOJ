@@ -3,16 +3,14 @@
 #include "oj_control.hpp"
 #include <signal.h>
 using namespace ns_control;
-static Control *ctrl_ptr = nullptr;
 
 int main()
 {
-    DebugEnable(); // 把调试开关打开
+    // DebugEnable(); // 把调试开关打开
 
     // 用户请求的服务器路由功能
     httplib::Server svr;
     Control ctrl; // 所以对路由的处理都交给了ctrl来处理
-    ctrl_ptr = &ctrl;
     // 用户要获取所有的题目列表
     // mysql版本
     // 1.在数据库设计中可以远程登陆的Mysql用户，并给他赋予权利oj_client,这个用户只能看到oj这个数据库
@@ -55,8 +53,18 @@ int main()
              {
                  string out;
                  ctrl.Access(req.body, out);
-                 res.set_content(out, "text/plain;cahrset=utf-8");
-             });
+                 res.set_content(out, "text/plain;cahrset=utf-8"); });
+    User u;
+    svr.Post("/register", [&](const httplib::Request &req, httplib::Response &res)
+             {
+                 string out;
+                u.Register(req.body,&out);
+                 res.set_content(out, "text/plain;cahrset=utf-8"); });
+    svr.Post("/clicklogin", [&](const httplib::Request &req, httplib::Response &res)
+             {
+                 string out;
+                u.Load(req.body,&out);
+                 res.set_content(out, "text/plain;cahrset=utf-8"); });
 
     svr.listen("0.0.0.0", 8080);
     return 0;

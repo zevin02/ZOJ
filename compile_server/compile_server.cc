@@ -29,11 +29,10 @@ int main(int argc, char *argv[])
     {
       LOG(INFO)<<"接入oj服务器"<<endl;
     }
+    LOG(INFO)<<res->status<<endl;
 
     // 不等于200,访问到目标主机但是结果是不对的
     //  请求成功了就要减少负载
-    else
-    LOG(ERROR) << "未接入oj服务器" << res->status << endl;
   }
   else
   {

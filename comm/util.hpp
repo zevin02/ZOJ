@@ -12,6 +12,8 @@ using namespace std;
 #include <atomic>
 #include <vector>
 #include <mysql/mysql.h>
+#include "structure.hpp"
+#include <jsoncpp/json/json.h>
 namespace ns_util
 {
     class TimeUtil
@@ -124,7 +126,7 @@ namespace ns_util
             return true;
         }
 
-        static bool ReadFile(const string &filename, string &content, bool keep = false)//读取文件数据
+        static bool ReadFile(const string &filename, string &content, bool keep = false) // 读取文件数据
         {
             ifstream ifs(filename, ios::in | ios::binary);
             if (!ifs.is_open())
@@ -165,10 +167,10 @@ namespace ns_util
 
     private:
         MYSQL *my;
-        MYSQL_RES *res;
+        MYSQL_RES *res = nullptr;
 
     public:
-        Mysql(string host, int port, string db, string user, string passwd)
+        Mysql(const string host, const int port, const string db, const string user, const string passwd)
             : _host(host), _port(port), _db(db), _user(user), _passwd(passwd)
         {
             my = mysql_init(nullptr);                                                                                      // 创建一个mysql句柄
@@ -176,15 +178,81 @@ namespace ns_util
         }
         ~Mysql()
         {
-            mysql_close(my); // 关闭mysql链接
+            mysql_free_result(res); // 清理结果
+            mysql_close(my);        // 关闭mysql链接
         }
-        bool Store(const string &sql)
+        bool Query(const string &sql) // 执行其他操作
         {
+            if (mysql_query(my, sql.c_str()) != 0)
+            {
+                return false;
+            }
+            return true;
+        }
+        bool Select(const std::string &sql, std::vector<std::vector<std::string>> &data)
+        {
+            if (!Query(sql))
+            {
+                return false;
+            }
             res = mysql_store_result(my);
-
+            int row = mysql_num_rows(res);   // 获得行树
+            int col = mysql_num_fields(res); // 获得列数
+            for (int i = 0; i < row; i++)
+            {
+                MYSQL_ROW row = mysql_fetch_row(res);
+                vector<string> cl;
+                for (int j = 0; j < col; j++)
+                {
+                    string s = row[j];
+                    cl.push_back(s);
+                }
+                data.push_back(cl);
+            }
             return true;
         }
     };
 
+    class JsonUtil
+    {
+    public:
+        static UserInfo UserInfoDeSerialize(const string &json) // 把用户的信息进行反序列化
+        {
+            Json::Reader reader;
+            Json::Value in_value;
+            reader.parse(json, in_value);
+            // 获得了用户名和密码
+            string username = in_value["username"].asString();
+            string passwd = in_value["passwd"].asString();
+
+            return UserInfo(username, passwd);
+        }
+        static string UserInfoSerialize(const UserInfo &ui)
+        {
+            Json::Value value;
+
+            value["username"] = ui.username;
+            value["passwd"] = ui.passwd;
+            Json::FastWriter writer;
+            return writer.write(value);
+        }
+
+        static Question QuestionDeSerialize(const string &json)//
+        {
+            Json::Reader reader;
+            Json::Value in_value;
+            reader.parse(json, in_value);
+            string number=in_value["number"].asString();
+            string title=in_value["title"].asString();
+            string star=in_value["star"].asString();
+            int cpulimit=in_value["cpu_limit"].asInt();
+            int memlimit=in_value["mem_limit"].asInt();
+            string desc=in_value["desc"].asString();
+            string header=in_value["header"].asString();
+            string tail=in_value["tail"].asString();
+            return Question(number,title,star,cpulimit,memlimit,desc,header,tail);
+
+        }
+    };
 
 };
