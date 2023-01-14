@@ -66,6 +66,16 @@ int main()
                 u.Load(req.body,&out);
                  res.set_content(out, "text/plain;cahrset=utf-8"); });
 
+    svr.Get("/login", [&](const httplib::Request &req, httplib::Response &res)//获得页面
+            {
+        string html;
+        FileUtil::ReadFile("./www_root/load.html",html,true);
+        res.set_content(html,"text/html;charset=utf8"); });
+    svr.Get("/registerpage", [&](const httplib::Request &req, httplib::Response &res)//获得注册页面
+            {
+        string html;
+        FileUtil::ReadFile("./www_root/register.html",html,true);
+        res.set_content(html,"text/html;charset=utf8"); });
     svr.listen("0.0.0.0", 8080);
     return 0;
 }
