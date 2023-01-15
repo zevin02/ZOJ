@@ -143,7 +143,7 @@ namespace ns_compile_run
                 out_value["stderr"] = string_stderr;                                    //
             }
 
-            Json::StyledWriter writer;
+            Json::FastWriter writer;
             outjson = writer.write(out_value);
 
             // 处理完之后，就要把所有生成的临时文件去除掉

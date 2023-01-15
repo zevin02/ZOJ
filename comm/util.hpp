@@ -205,9 +205,9 @@ namespace ns_util
                 for (int j = 0; j < col; j++)
                 {
                     string s = row[j];
-                    cl.push_back(s);
+                    cl.push_back(move(s));
                 }
-                data.push_back(cl);
+                data.push_back(move(cl));
             }
             return true;
         }
@@ -227,7 +227,7 @@ namespace ns_util
 
             return UserInfo(username, passwd);
         }
-        static string UserInfoSerialize(const UserInfo &ui)
+        static string UserInfoSerialize(const UserInfo &ui)//将用户的信息进行序列化
         {
             Json::Value value;
 
@@ -237,7 +237,7 @@ namespace ns_util
             return writer.write(value);
         }
 
-        static Question QuestionDeSerialize(const string &json)//
+        static Question QuestionDeSerialize(const string &json)//将题目数据进行反序列化
         {
             Json::Reader reader;
             Json::Value in_value;
@@ -253,6 +253,8 @@ namespace ns_util
             return Question(number,title,star,cpulimit,memlimit,desc,header,tail);
 
         }
+
+
     };
 
 };

@@ -36,39 +36,37 @@ namespace ns_control
         }
         ~Machine()
         {
-            if (_mtx){
-                delete _mtx;
-                _mtx=nullptr;
+            if (_mtx)
+            {
+                delete _mtx;//这里因为之前的操作会被delete两次，所以才会导致死锁
+                _mtx = nullptr;
             }
         }
-        //移动构造
-        void swap(Machine& m)
+        // 移动构造
+        void swap(Machine &m)
         {
-            ::swap(ip,m.ip);
-            ::swap(port,m.port);
-            ::swap(load,m.load);
-            ::swap(_mtx,m._mtx);
+            ::swap(ip, m.ip);
+            ::swap(port, m.port);
+            ::swap(load, m.load);
+            ::swap(_mtx, m._mtx);
         }
 
-        
-        Machine(Machine&& m)//移动构造
-        :ip(""),port(0),load(0),_mtx(nullptr)
+        Machine(Machine &&m) // 移动构造
+            : ip(""), port(0), load(0), _mtx(nullptr)
         {
             swap(m);
         }
 
-        Machine& operator=(Machine&& m)//移动赋值
+        Machine &operator=(Machine &&m) // 移动赋值
         {
-            ip="";
-            port=0;
-            load=0;
-            _mtx=nullptr;
+            ip = "";
+            port = 0;
+            load = 0;
+            _mtx = nullptr;
             swap(m);
             return *this;
-
-            
         }
-        Machine &operator=(const Machine &m)
+        Machine &operator=(const Machine &m) // 拷贝赋值
         {
             ip = m.ip;
             port = m.port;
@@ -125,14 +123,16 @@ namespace ns_control
         vector<int> hash;          // 用来处理一致性hash，
         // 保证在选择主机的时候，需要保证数据的安全
         mutex mtx;
+        Mysql m;
 
     public:
-        LoadBalance()
+        LoadBalance() // 构造函数，创建这个对象的时候，就把后端在线的机器加载进去
+        :m(host, port, db, user, passwd)
         {
             string sql = "select * from machine_list";
-            LoadConf(sql); // 启动的时候就加载进来了
+            assert(LoadConf(sql)==true); // 启动的时候就加载进来了
             // LoadConf(machinelist,sql); // 启动的时候就加载进来了
-            if (isDebugEnable())
+            if (LogStatus::GetInstance().isDebugEnable())
             {
                 ShowMachine();
 
@@ -165,51 +165,36 @@ namespace ns_control
                 LOG(INFO) << "machine:" << port << "接入成功" << endl;
                 hash.push_back(port);
                 online.insert(port);
-                if (isDebugEnable())
+                if (LogStatus::GetInstance().isDebugEnable())
                 {
                     ShowMachine();
                 }
             }
         }
 
-        bool LoadConf(const string &sql) // 在数据库中加载机器
+        bool LoadConf(const string &sql) // 使用包装的数据库类来操作sql中加载机器,修改成
         {
-            MYSQL *my = mysql_init(nullptr); // 创建一个mysql句柄
-            // 连接数据库成功
-            if (mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0) == nullptr) // 连接数据库
-            {
-                LOG(FATAL) << "连接数据库失败" << endl;
-                return false;
-            }
-            // 执行sql语句
-            if (mysql_query(my, sql.c_str()) != 0)
-            {
-                LOG(WARNING) << sql << " sql语句执行失败 " << endl;
-                return false;
-            }
-            // 提取结果
-            MYSQL_RES *res = mysql_store_result(my);
 
-            int row = mysql_num_rows(res);   // 获得行树
-            int col = mysql_num_fields(res); // 获得列数
-            for (int i = 0; i < row; i++)
+            vector<vector<string>> data;
+            if (m.Select(sql, data))
             {
-                MYSQL_ROW row = mysql_fetch_row(res);
-                Machine ma;
-                ma.ip = row[0];
-                ma.port = atoi(row[1]);
-                ma._mtx = new mutex();
-                ma.load = 0;
-                // online.push_back(machine.size()); // 放进去对应的id
-                // 需要对每个服务器发起http请求，如果在线的话，就添加到online服务器中,否则就添加到offline中
-                AskCompile("127.0.0.1", ma.port);
+                // 成功,所有的数据都在data里面
+                for (int i = 0; i < data.size(); i++)
+                {
+                    Machine ma;
+                    ma.ip = data[i][0];
+                    ma.port = stoi(data[i][1]);
+                    ma.load = 0;
+                    ma._mtx = new mutex();
+                    // online.push_back(machine.size()); // 放进去对应的id
+                    // 需要对每个服务器发起http请求，如果在线的话，就添加到online服务器中,否则就添加到offline中
+                    AskCompile(ma.ip, ma.port);
 
-                machine[ma.port] = move(ma);
+                    machine[ma.port] = move(ma);
+                }
+                return true;
             }
-            mysql_free_result(res);
-
-            mysql_close(my); // 关闭mysql链接
-            return true;
+            return false;
         }
 
         // 智能的在在线机器中选择
@@ -237,7 +222,7 @@ namespace ns_control
             *id = port;
             *m = &machine[port];
 
-            if (isDebugEnable())
+            if (LogStatus::GetInstance().isDebugEnable())
             {
                 LOG(DEBUG) << "key=" << key << ",port=" << (*m)->port << endl;
             }
@@ -290,7 +275,7 @@ namespace ns_control
             // 把offline的东西插入到online中
             for (auto &ma : machine)
             {
-                AskCompile("127.0.0.1", ma.second.port);
+                AskCompile(ma.second.ip, ma.second.port);
             }
             LOG(INFO) << "所有的主机上线了" << endl;
         }
@@ -433,13 +418,14 @@ namespace ns_control
         {
         }
 
-        bool Access(const string &injson, string &out)
+        bool Access(const string &injson, string &out)//其他后端机器请求连接
         {
             Json::Reader reader;
             Json::Value in_value;
             reader.parse(injson, in_value);
             string ip = in_value["ip"].asString();
             int port = in_value["port"].asInt();
+
             load_balance.OnlineAdd(ip, port);
             out = "机器" + to_string(port) + "连接成功";
             LOG(INFO) << out << endl;
@@ -547,7 +533,6 @@ namespace ns_control
                 }
             }
 
-            // 将结果给到outjson
             // 在service.conf可以查看哪个主机上线了
         }
     };

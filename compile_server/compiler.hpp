@@ -45,7 +45,7 @@ namespace ns_compiler
             if(pid<0)
             {
                 //失败,
-                LOG(ERROR)<<"fork() error"<<endl;//启动等级的开关
+                LOG(ERROR)<<"fork() error"<<endl;//
                 return false;
             }
             else if(pid==0)
@@ -65,7 +65,7 @@ namespace ns_compiler
                 //打开文件成功了
                 //重定向标准错误到文件中
                 dup2(_stderr,2);
-
+                //-D就是添加了一个宏
                 execlp("g++","g++",ns_util::PathUtil::Src(code_filename).c_str(),"-o",ns_util::PathUtil::Extension(code_filename).c_str(),"-std=c++11","-D","COMPLER_ONLINE",nullptr);
                 LOG(ERROR)<<"executing g++ fails,maybe parameter has wrong"<<endl;
                 exit(1);//退出

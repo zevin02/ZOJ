@@ -31,7 +31,7 @@ namespace ns_runner
             //设置CPU时长
             struct rlimit cpulimit;
             cpulimit.rlim_cur=_cpu;
-            cpulimit.rlim_max=RLIM_INFINITY;
+            cpulimit.rlim_max=RLIM_INFINITY;//最高设置成无上限
             setrlimit(RLIMIT_CPU,&cpulimit);
 
             //设置内存大小
@@ -60,6 +60,7 @@ namespace ns_runner
             // 1.标准输入：不处理
             // 2.标准输出：程序运行完成，输出结果是什么
             // 3.标准错误：运行时错误信息
+
             string exe_file = PathUtil::Extension(filename);
             string _stdin = PathUtil::Stdin(filename);
             string _stdout = PathUtil::Stdout(filename);
@@ -95,7 +96,7 @@ namespace ns_runner
                 SetProcLimit(cpu_limit,mem_limit);//子进程约束自己
                 //运行可执行文件
                 //./a.out，并把输出的结果放到临时文件中
-                execl(exe_file.c_str(),exe_file.c_str(),nullptr);
+                execl(exe_file.c_str(),exe_file.c_str(),nullptr);//execl带的是路径，就是我们需要的，而不是他的文件名
                 exit(1);
             }
             else

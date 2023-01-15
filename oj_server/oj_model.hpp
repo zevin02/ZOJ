@@ -20,17 +20,7 @@ namespace ns_model
 {
     using namespace ns_util;
     using namespace ns_log;
-    struct Question
-    {
-        string number; // 题目的编号
-        string title;  // 题目的标题
-        string star;
-        int cpulimit;
-        int memlimit;
-        string desc; //
-        string header;
-        string tail; // 题目的测试用例
-    };
+
     string questionlist = "./questions/question.list"; // 题目列表
     class Model
     {
