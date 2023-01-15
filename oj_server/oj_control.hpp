@@ -36,8 +36,37 @@ namespace ns_control
         }
         ~Machine()
         {
-            // if (_mtx)
-            //     delete _mtx;
+            if (_mtx){
+                delete _mtx;
+                _mtx=nullptr;
+            }
+        }
+        //移动构造
+        void swap(Machine& m)
+        {
+            ::swap(ip,m.ip);
+            ::swap(port,m.port);
+            ::swap(load,m.load);
+            ::swap(_mtx,m._mtx);
+        }
+
+        
+        Machine(Machine&& m)//移动构造
+        :ip(""),port(0),load(0),_mtx(nullptr)
+        {
+            swap(m);
+        }
+
+        Machine& operator=(Machine&& m)//移动赋值
+        {
+            ip="";
+            port=0;
+            load=0;
+            _mtx=nullptr;
+            swap(m);
+            return *this;
+
+            
         }
         Machine &operator=(const Machine &m)
         {
@@ -175,7 +204,7 @@ namespace ns_control
                 // 需要对每个服务器发起http请求，如果在线的话，就添加到online服务器中,否则就添加到offline中
                 AskCompile("127.0.0.1", ma.port);
 
-                machine[ma.port] = ma;
+                machine[ma.port] = move(ma);
             }
             mysql_free_result(res);
 
