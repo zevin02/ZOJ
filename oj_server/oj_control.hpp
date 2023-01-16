@@ -38,7 +38,7 @@ namespace ns_control
         {
             if (_mtx)
             {
-                delete _mtx;//这里因为之前的操作会被delete两次，所以才会导致死锁
+                delete _mtx; // 这里因为之前的操作会被delete两次，所以才会导致死锁
                 _mtx = nullptr;
             }
         }
@@ -127,10 +127,10 @@ namespace ns_control
 
     public:
         LoadBalance() // 构造函数，创建这个对象的时候，就把后端在线的机器加载进去
-        :m(host, port, db, user, passwd)
+            : m(host, port, db, user, passwd)
         {
             string sql = "select * from machine_list";
-            assert(LoadConf(sql)==true); // 启动的时候就加载进来了
+            assert(LoadConf(sql) == true); // 启动的时候就加载进来了
             // LoadConf(machinelist,sql); // 启动的时候就加载进来了
             if (LogStatus::GetInstance().isDebugEnable())
             {
@@ -288,119 +288,6 @@ namespace ns_control
         }
     };
 
-    class User
-    {
-    private:
-        Mysql m;
-
-    public:
-        User()
-            : m(host, port, db, user, passwd)
-        {
-        }
-
-        bool Query(const string &sql, vector<UserInfo> &userlist) // 在数据库中加载机器
-        {
-            if (!m.Query(sql))
-            {
-                LOG(ERROR) << sql << endl;
-                return false;
-            }
-            return true;
-        }
-
-        bool Register(const string &injson, string *out) // 注册
-        {
-            // 反序列化
-            // Json::Reader reader;
-            // Json::Value in_value;
-            // reader.parse(injson, in_value);
-            // //获得了用户名和密码
-            // string username = in_value["username"].asString();
-            // string passwd=in_value["passwd"].asString();
-            UserInfo u = JsonUtil::UserInfoDeSerialize(injson);
-            // insert into users (username,passwd) values (11,'123');
-
-            string sql = "insert into users (username,passwd) values (" + u.username + ","
-                                                                                       "'" +
-                         u.passwd + "'"
-                                    ");";
-            // string sql = "insert into users (username,passwd) values ("+u.username+","+u.passwd+");";
-            vector<UserInfo> userlist;
-            if (Query(sql, userlist))
-            {
-                *out = "注册成功";
-                return true;
-            }
-            else
-            {
-                *out = "注册失败";
-                return false;
-            }
-        }
-        bool Load(const string &injson, string *out) // 登陆
-        {
-            UserInfo u = JsonUtil::UserInfoDeSerialize(injson);
-
-            string sql = "select * from users where username=";
-            sql += u.username;
-            sql += " and passwd=";
-            sql += "'";
-            sql += u.passwd;
-            sql += "'";
-            sql += ";";
-            vector<vector<string>> data;
-
-            if (m.Select(sql, data))
-            {
-                if (data.empty())
-                {
-                    // 没有数据，说明登陆失败
-                    *out = "登陆失败";
-                    LOG(ERROR) << sql << endl;
-                    return true;
-                }
-                *out = "登陆成功";
-                return true;
-            }
-            else
-            {
-                LOG(ERROR) << sql << endl;
-                *out = "登陆失败";
-                return false;
-            }
-        }
-        bool TopicAdd(const string &injson, string *out)
-        {
-            // 添加题目
-            Question q = JsonUtil::QuestionDeSerialize(injson); // 获得序列化的题目
-            // insert into oj_question ()
-            // string sql="insert into "
-            return true;
-        }
-
-        bool GetInfo(const string &sql)
-        {
-            vector<vector<string>> data;
-            if (m.Select(sql, data))
-            {
-                for (int i = 0; i < data.size(); i++)
-                {
-                    for (int j = 0; j < data[0].size(); j++)
-                    {
-                        cout << data[i][j] << " ";
-                    }
-                    cout << endl;
-                }
-                return true;
-            }
-            else
-            {
-                LOG(ERROR) << sql << endl;
-                return false;
-            }
-        }
-    };
     class Control
     {
     private:
@@ -418,7 +305,7 @@ namespace ns_control
         {
         }
 
-        bool Access(const string &injson, string &out)//其他后端机器请求连接
+        bool Access(const string &injson, string &out) // 其他后端机器请求连接
         {
             Json::Reader reader;
             Json::Value in_value;
@@ -535,5 +422,18 @@ namespace ns_control
 
             // 在service.conf可以查看哪个主机上线了
         }
+        bool Load(const string &injson, string *out) // 登陆
+        {
+            return _model.Load(injson, out);
+        }
+        bool TopicAdd(const string &injson, string *out)
+        {
+            return _model.TopicAdd(injson, out);
+        }
+        bool Register(const string &injson, string *out) // 注册
+        {
+            return _model.Register(injson, out);
+        }
+
     };
 };

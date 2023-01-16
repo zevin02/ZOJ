@@ -55,12 +55,12 @@ namespace ns_log
         {
             return option;
         }
-        
+
     };
 
     // LOG(WARNING)<<"message",这样的使用，写到缓冲区里面,开放式的接口
     // 这个地方设置成内连函数，就不用频繁的进行函数调用，而是直接进行宏替换即可
-    unordered_map<string, int> LogLevel = {{"DEBUG", 0}, {"INFO", 1}, {"WARNING", 2}, {"ERROR", 3}, {"FATAL", 4}}; // 设置对应
+    unordered_map<string, int> LogLevel{{"DEBUG", 0}, {"INFO", 1}, {"WARNING", 2}, {"ERROR", 3}, {"FATAL", 4}}; // 设置对应
 
     inline ostream &log(const string &level, const string &filename, const int &line)
     {
