@@ -93,7 +93,7 @@ namespace ns_control
                 _mtx->unlock();
             }
         }
-        uint64_t GetLoad() // 没有意义
+        uint64_t GetLoad() const // 没有意义
         {
             if (_mtx)
             {
@@ -194,6 +194,9 @@ namespace ns_control
                 }
                 return true;
             }
+            else
+                throw SqlException(LogHeader(ERROR), "加载机器失败", sql);
+
             return false;
         }
 
@@ -328,6 +331,7 @@ namespace ns_control
                 sort(all.begin(), all.end(), [](const Question &s1, const Question &s2)
                      { return stoi(s1.number) < stoi(s2.number); });
                 _view.AllExpand(all, html);
+
                 return true;
             }
             else
@@ -434,6 +438,5 @@ namespace ns_control
         {
             return _model.Register(injson, out);
         }
-
     };
 };

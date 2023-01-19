@@ -72,16 +72,21 @@ namespace ns_runner
 
             if (infd < 0 || outfd < 0 || errfd < 0)
             {
-                LOG(ERROR) << "Open standard file error at runtime"<<endl;
+                // LOG(ERROR) << "Open standard file error at runtime"<<endl;
+                throw CompilerException(LogHeader(ERROR),  "Open standard file error at runtime");
+
                 return -1; // 代表打开文件失败
             }
             pid_t pid = fork();
             if (pid < 0)
             {
-                LOG(ERROR)<<"Fork() error at runtime"<<endl;
+                // LOG(ERROR)<<"Fork() error at runtime"<<endl;
+
                 close(infd);
                 close(outfd);
                 close(errfd);
+                throw CompilerException(LogHeader(ERROR),"Fork() error at runtime");
+
                 return -2; // 创建子进程失败
             }
             else if (pid == 0)

@@ -11,12 +11,13 @@ using namespace std;
 #include <vector>
 #include "../comm/util.hpp"
 #include <mysql/mysql.h>
+#include "../comm/exception.hpp"
 // 将所有的题目加载到内存中
 namespace ns_model
 {
     using namespace ns_util;
     using namespace ns_log;
-
+    using namespace ns_exception;
     string host = "127.0.0.1";
     int port = 3306;
     string db = "oj"; // 选择数据库
@@ -59,20 +60,27 @@ namespace ns_model
 
                     q.memlimit = stoi(data[i][7]);
 
-                    out.push_back(move(q));//移动构造，直接把q的值放进去不弄一个新的对象出来
-
+                    out.push_back(move(q)); // 移动构造，直接把q的值放进去不弄一个新的对象出来
                 }
                 return true;
             }
 
-     
             return false;
         }
         bool GetAllQuestion(vector<Question> &out) // 获得所有题目再根据登陆人的身份查看自己的题库
         {
             const string sql = "select * from oj_question;";
             // const string sql="select * from some_question";
-            return QueryQuestion(sql, out);
+            if(QueryQuestion(sql, out))
+            {
+                return true;
+            }
+            else
+            {
+                throw SqlException(LogHeader(ERROR), "获得题库失败", sql);
+                return false;
+                
+            }
         }
         bool GetAQuestion(string number, Question &q) // 获得一个题目
         {
@@ -89,13 +97,18 @@ namespace ns_model
                     res = true;
                 }
             }
+            else
+            {
+                throw SqlException(LogHeader(ERROR), "获得题："+number+"失败", sql);
+
+            }
             return res;
         }
         bool Query(const string &sql, vector<UserInfo> &userlist) // 在数据库中加载机器
         {
             if (!m.Query(sql))
             {
-                LOG(ERROR) << sql << endl;
+                // LOG(ERROR) << sql << endl;
                 return false;
             }
             return true;
@@ -121,6 +134,8 @@ namespace ns_model
             else
             {
                 *out = "注册失败";
+                throw SqlException(LogHeader(ERROR), "注册失败", sql);
+
                 return false;
             }
         }
@@ -151,8 +166,11 @@ namespace ns_model
             }
             else
             {
+                //sql语句失败
                 LOG(ERROR) << sql << endl;
                 *out = "登陆失败";
+                throw SqlException(LogHeader(ERROR), "登陆失败", sql);
+
                 return false;
             }
         }

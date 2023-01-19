@@ -51,17 +51,16 @@ namespace ns_log
         {
             return option == DEBUG;
         }
-        int Status()//获得此时的状态log
+        int Status() // 获得此时的状态log
         {
             return option;
         }
-
     };
 
     // LOG(WARNING)<<"message",这样的使用，写到缓冲区里面,开放式的接口
     // 这个地方设置成内连函数，就不用频繁的进行函数调用，而是直接进行宏替换即可
     unordered_map<string, int> LogLevel{{"DEBUG", 0}, {"INFO", 1}, {"WARNING", 2}, {"ERROR", 3}, {"FATAL", 4}}; // 设置对应
-
+    vector<string> Level2Name{"DEBUG","INFO","WARNING","ERROR","FATAL"};
     inline ostream &log(const string &level, const string &filename, const int &line)
     {
         if (LogLevel[level] >= LogStatus::GetInstance().Status())
@@ -88,9 +87,39 @@ namespace ns_log
         }
         return std::cout; // 形成一个这样的开放式的输入输出形式
     }
+    inline string log(const int  &level_, const string &filename, const int &line)//重载一个返回string类型的
+    {
+        string message;
+        string level=Level2Name[level_];
+
+        if (LogLevel[level] >= LogStatus::GetInstance().Status())
+        {
+            // 添加日志等级
+            message += "[";
+            message += level;
+            message += "] ";
+
+            // 添加日志出错的文件名
+            message += "[";
+            message += filename;
+            message += ":";
+            // 添加日志的出错行号码
+            message += to_string(line);
+            message += "] ";
+            // 添加日志的时间
+            message += "[";
+            message += TimeUtil::GetTime();
+            message += "] ";
+
+            // cout本质是包含缓存区的
+        }
+        return message; // 形成一个这样的开放式的输入输出形式
+
+    }
 
 // LOG(INFO)<<"hello"
 #define LOG(level) log(#level, __FILE__, __LINE__)
     // 如果debug打开才能使用
+#define LogHeader(level) log(level,__FILE__,__LINE__)
 
 };
