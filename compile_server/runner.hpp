@@ -14,6 +14,7 @@ namespace ns_runner
 {
     using namespace ns_util;
     using namespace ns_log;
+    using namespace ns_exception;
     class Runner
     {
     public:

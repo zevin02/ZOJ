@@ -218,6 +218,7 @@ namespace ns_control
                 LOG(FATAL) << "所有后端的编译主机已经全部离线了，需要尽快修复" << endl;
                 return false;
             }
+            //通过哈希算法来计算一个一个哈希值，再和现在总共的机器数取模得到一个特定的值
             long key = stol(TimeUtil::GetTimeMs()); // 使用毫秒级时间戳计算一个key
             int randon = key % hash.size();         // 和当前在线的机器数量进行取模
 

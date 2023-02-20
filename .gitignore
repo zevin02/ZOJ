@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+
+oj_server/conf/*
+oj_server/questions/*
+test*
