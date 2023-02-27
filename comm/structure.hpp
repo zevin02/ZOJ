@@ -1,4 +1,5 @@
 #pragma once
+#include"bloomfilter.hpp"
 #include <string>
 using namespace std;
 
@@ -67,3 +68,4 @@ struct Question
         tail = q.tail;
     }
 };
+
