@@ -299,6 +299,7 @@ namespace ns_control
         // 还需要有构建成网页的view
         View _view; // 提供网页绚烂的功能
         LoadBalance load_balance;
+        
         // User user;
 
     public:

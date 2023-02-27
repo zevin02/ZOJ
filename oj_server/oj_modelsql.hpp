@@ -23,17 +23,45 @@ namespace ns_model
     string db = "oj"; // 选择数据库
     string user = "oj_client";
     string passwd = "@123456!!";
-
+    // 在这里一开始就把所有的已经注册过的用户的用户名，全部都导入到布隆过滤器中
     class Model
     {
     private:
         Mysql m;
+        BloomFilter<1000> registered_users; // 已经注册过的用户
 
     public:
         Model()
             : m(host, port, db, user, passwd)
 
         {
+            // 在构造函数的时候就要加载
+            // 把users中的所有数据都加载进去
+            string sql = "select username from users";
+            vector<vector<string>> username;
+            try
+            {
+                if (m.Select(sql, username))
+                {
+                    // 获得了数据
+                    for (int i = 0; i < username.size(); i++)
+                    {
+                        for (int j = 0; j < username[0].size(); j++)
+                        {
+                            // 获得了所有的用户的数据
+                            registered_users.set(username[i][j]); // 将所有的用户名都添加到布隆过滤器中
+                        }
+                    }
+                }
+                else
+                {
+                    throw SqlException(LogHeader(ERROR), "加载用户名失败", sql);
+                }
+            }
+            catch (const Exception &e)
+            {
+                cout << e.what() << endl;
+            }
         }
         ~Model()
         {
@@ -71,7 +99,7 @@ namespace ns_model
         {
             const string sql = "select * from oj_question;";
             // const string sql="select * from some_question";
-            if(QueryQuestion(sql, out))
+            if (QueryQuestion(sql, out))
             {
                 return true;
             }
@@ -79,11 +107,11 @@ namespace ns_model
             {
                 throw SqlException(LogHeader(ERROR), "获得题库失败", sql);
                 return false;
-                
             }
         }
         bool GetAQuestion(string number, Question &q) // 获得一个题目
         {
+
             bool res = false;
             string sql = "select * from oj_question where number=";
             sql += number;
@@ -99,8 +127,7 @@ namespace ns_model
             }
             else
             {
-                throw SqlException(LogHeader(ERROR), "获得题："+number+"失败", sql);
-
+                throw SqlException(LogHeader(ERROR), "获得题：" + number + "失败", sql);
             }
             return res;
         }
@@ -117,61 +144,84 @@ namespace ns_model
         bool Register(const string &injson, string *out) // 注册
         {
 
-            UserInfo u = JsonUtil::UserInfoDeSerialize(injson);
+            UserInfo u = JsonUtil::UserInfoDeSerialize(injson); // 把发送过来的json串进行反序列化
             // insert into users (username,passwd) values (11,'123');
-
-            string sql = "insert into users (username,passwd) values (" + u.username + ","
-                                                                                       "'" +
-                         u.passwd + "'"
-                                    ");";
-            // string sql = "insert into users (username,passwd) values ("+u.username+","+u.passwd+");";
-            vector<UserInfo> userlist;
-            if (Query(sql, userlist))
+            if (registered_users.test(u.username))
             {
-                *out = "注册成功";
-                return true;
+                // 别人要注册的用户名已经被人给注册了所以，就注册失败
+                *out = "注册失败，用户名已经存在";
+                return false;
             }
             else
             {
-                *out = "注册失败";
-                throw SqlException(LogHeader(ERROR), "注册失败", sql);
+                // 要注册的用户名并没有被人给注册过
+                // 所以可以执行sql语句
+                string sql = "insert into users (username,passwd) values (" + u.username + ","
+                                                                                           "'" +
+                             u.passwd + "'"
+                                        ");";
+                // string sql = "insert into users (username,passwd) values ("+u.username+","+u.passwd+");";
+                vector<UserInfo> userlist;
+                if (Query(sql, userlist))
+                {
+                    *out = "注册成功";
+                    // 如果注册成功，就要把新加进来的这个用户名添加到布隆过滤器中
+                    registered_users.set(u.username);
 
-                return false;
+                    return true;
+                }
+                else
+                {
+                    *out = "注册失败";
+                    throw SqlException(LogHeader(ERROR), "注册失败", sql);
+
+                    return false;
+                }
             }
         }
         bool Load(const string &injson, string *out) // 登陆
         {
+
             UserInfo u = JsonUtil::UserInfoDeSerialize(injson);
-
-            string sql = "select * from users where username=";
-            sql += u.username;
-            sql += " and passwd=";
-            sql += "'";
-            sql += u.passwd;
-            sql += "'";
-            sql += ";";
-            vector<vector<string>> data;
-
-            if (m.Select(sql, data))
+            if (!registered_users.test(u.username))
             {
-                if (data.empty())
-                {
-                    // 没有数据，说明登陆失败
-                    *out = "登陆失败";
-                    LOG(ERROR) << sql << endl;
-                    return true;
-                }
-                *out = "登陆成功";
-                return true;
+                // 别人要注册的用户名已经被人给注册了所以，就注册失败
+                *out = "登陆失败，用户名不存在";
+                return false;
             }
             else
             {
-                //sql语句失败
-                LOG(ERROR) << sql << endl;
-                *out = "登陆失败";
-                throw SqlException(LogHeader(ERROR), "登陆失败", sql);
+                // 用户名存在，看看密码是否正确
+                string sql = "select * from users where username=";
+                sql += u.username;
+                sql += " and passwd=";
+                sql += "'";
+                sql += u.passwd;
+                sql += "'";
+                sql += ";";
+                vector<vector<string>> data;
 
-                return false;
+                if (m.Select(sql, data))
+                {
+                    if (data.empty())
+                    {
+                        // 没有数据，说明登陆失败
+                        *out = "登陆失败,密码错误";
+                        LOG(WARNING) << sql << endl;
+                        return true;
+                    }
+                    *out = "登陆成功";
+                    return true;
+                }
+                else
+                {
+                    // sql语句失败
+                    LOG(ERROR) << sql << endl;
+                    *out = "登陆失败";
+                    throw SqlException(LogHeader(ERROR), "登陆失败", sql);
+
+                    return false;
+                }
             }
         }
         bool TopicAdd(const string &injson, string *out)
@@ -205,5 +255,4 @@ namespace ns_model
             }
         }
     };
-
 };
