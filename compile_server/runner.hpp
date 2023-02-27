@@ -27,7 +27,7 @@ namespace ns_runner
 
         //cpu_limit:程序运行时，可以使用的最大CPU资源上限
         //mem_limit:程序运行时，可以使用的最大内存大小(KB)
-        static void SetProcLimit(int _cpu,int _mem)
+        static void SetProcLimit(int _cpu,int _mem)//设置
         {
             //设置CPU时长
             struct rlimit cpulimit;
