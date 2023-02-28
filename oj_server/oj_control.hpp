@@ -295,12 +295,12 @@ namespace ns_control
     class Control
     {
     private:
+    //在control中控制数据和视图
         Model _model; // 数据
         // 还需要有构建成网页的view
         View _view; // 提供网页绚烂的功能
-        LoadBalance load_balance;
+        LoadBalance load_balance;//负载均衡器
         
-        // User user;
 
     public:
         Control()
@@ -329,9 +329,9 @@ namespace ns_control
             if (_model.GetAllQuestion(all))
             {
                 // 获得成功,将所有的题目数据构成一个网页
-                // 把所有题目转化成html
+                // 将所有获得的数据按照序号从小到大进行排序
                 sort(all.begin(), all.end(), [](const Question &s1, const Question &s2)
-                     { return stoi(s1.number) < stoi(s2.number); });
+                     { return stoi(s1.number) < stoi(s2.number); });//使用Lambda表达式
                 _view.AllExpand(all, html);
 
                 return true;

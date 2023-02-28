@@ -11,16 +11,9 @@ int main()
     // 用户请求的服务器路由功能
 
     httplib::Server svr;
-    Control ctrl; // 所以对路由的处理都交给了ctrl来处理
+    Control ctrl; // ctrl实现了对客户端需要功能的路由
     // 用户要获取所有的题目列表
     // mysql版本
-    // 1.在数据库设计中可以远程登陆的Mysql用户，并给他赋予权利oj_client,这个用户只能看到oj这个数据库
-    // 2.设计表结构oj_question
-    /*
-        题目序号，题目名称，题目难度，
-    */
-
-    // 3.开始编码，访问数据库
     try
     {
         

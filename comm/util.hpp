@@ -126,7 +126,7 @@ namespace ns_util
             return true;
         }
 
-        static bool ReadFile(const string &filename, string &content, bool keep = false) // 读取文件数据
+        static bool ReadFile(const string &filename, string &content, bool keep = false) // 读取文件数据，keep这个地方我们可以自主的选择是否需要添加上了换行
         {
             ifstream ifs(filename, ios::in | ios::binary);
             if (!ifs.is_open())
