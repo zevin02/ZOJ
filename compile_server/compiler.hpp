@@ -66,7 +66,7 @@ namespace ns_compiler
                 // 打开文件成功了标准库标准库
                 // 重定向标准错误到文件中
                 dup2(_stderr, 2);
-                //-D就是添加了一个宏
+                //-D就是添加了一个宏，在对文件编译的时候，默认就把COMPILE——ONLINE这个宏给添加上了
                 execlp("g++", "g++", ns_util::PathUtil::Src(code_filename).c_str(), "-o", ns_util::PathUtil::Extension(code_filename).c_str(), "-std=c++11", "-D", "COMPLER_ONLINE", nullptr);
                 // LOG(ERROR) << "executing g++ fails,maybe parameter has wrong" << endl;
                 throw CompilerException(LogHeader(ERROR), "executing g++ fails,maybe parameter has wrong");//抛异常

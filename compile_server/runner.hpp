@@ -67,6 +67,7 @@ namespace ns_runner
             string _stdout = PathUtil::Stdout(filename);
             string _stderr = PathUtil::StdError(filename);
             umask(0);
+            //这个地方先提前把需要的文件创建出来
             int infd = open(_stdin.c_str(), O_CREAT | O_RDONLY, 0644);
             int outfd = open(_stdout.c_str(), O_CREAT | O_WRONLY, 0644);
             int errfd = open(_stderr.c_str(), O_CREAT | O_WRONLY, 0644);
@@ -81,17 +82,17 @@ namespace ns_runner
             pid_t pid = fork();
             if (pid < 0)
             {
-                // LOG(ERROR)<<"Fork() error at runtime"<<endl;
 
                 close(infd);
                 close(outfd);
                 close(errfd);
-                throw CompilerException(LogHeader(ERROR),"Fork() error at runtime");
+                throw CompilerException(LogHeader(ERROR),"Fork() error at runtime");//fork失败抛出异常
 
                 return -2; // 创建子进程失败
             }
             else if (pid == 0)
             {
+                //因为父子进程共享文件描述符，所以子进程对文件的修改是同样的
                 //现在我们要进行重定向流
                 dup2(infd,0);
                 dup2(outfd,1);
