@@ -52,9 +52,9 @@ namespace ns_model
                         string password = user[i][1];
 
                         registered_users.set(username); // 将所有的用户名都添加到布隆过滤器中
-                        //添加到一个hash里面
-                        //使用的key 是user：username
-                        string command="hmset "+"user:"+username+" "+username+" "+password;
+                        // 添加到一个hash里面
+                        // 使用的key 是user：username
+                        string command = "hmset " + "user:" + username + " " + username + " " + password;
 
                         redis.adddata(command);
                     }
@@ -163,13 +163,20 @@ namespace ns_model
             {
                 // 这地方先使用redis进行缓存判断一下
                 // 如果缓存中得到了，就不需要再使用mysql
-                string hkey = "user:" + u.username; // 先得到需要查询的key
-                auto result = redis.hget(hkey, ) if ()
-
-                                  else
+                // string hkey = "user:" + u.username; // 先得到需要查询的key
+                string command = "exists user:" + u.username; // 获得用户的密码
+                if (redis.exists(command))
                 {
-                    // 要注册的用户名并没有被人给注册过
-                    // 所以可以执行sql语句
+                    // 如果找到了,说明该用户已经被注册过了
+                    *out = "注册失败，用户名已经存在";
+                    return false;
+                }
+
+                else
+                {
+                    // redis里面也没找到这个用户，所以就可以执行添加
+                    //  要注册的用户名并没有被人给注册过
+                    //  所以可以执行sql语句
                     string sql = "insert into users (username,passwd) values (" + u.username + ","
                                                                                                "'" +
                                  u.passwd + "'"
@@ -181,7 +188,9 @@ namespace ns_model
                         *out = "注册成功";
                         // 如果注册成功，就要把新加进来的这个用户名添加到布隆过滤器中
                         registered_users.set(u.username);
-
+                        //这个地方也需要往redis里面缓存添加新的数据
+                        string command = "hmset " + "user:" + u.username + " " + u.username + " " + u.password;
+                        redis.adddata(command);
                         return true;
                     }
                     else

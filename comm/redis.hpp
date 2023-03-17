@@ -60,9 +60,10 @@ public:
         disconnect();
     }
 
-    void adddata(string command) // 所有的向redis里面添加数据的都调用这个
+    bool adddata(string command) // 所有的向redis里面添加数据的都调用这个
     {
-        execute_command(command);
+        pm_rr=execute_command(command);
+        return pm_rr?true:false;
     }
     bool exists(string command) // 判断某个key是否在数据库里面
     {
