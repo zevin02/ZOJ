@@ -12,6 +12,8 @@ using namespace std;
 #include "../comm/util.hpp"
 #include <mysql/mysql.h>
 #include "../comm/exception.hpp"
+#include "../comm/redis.hpp"
+
 // 将所有的题目加载到内存中
 namespace ns_model
 {
@@ -29,28 +31,28 @@ namespace ns_model
     private:
         Mysql m;
         BloomFilter<1000> registered_users; // 已经注册过的用户
-
+        Myredis redis;                      // 使用自己封装的redis
     public:
         Model()
-            : m(host, port, db, user, passwd)
+            : m(host, port, db, user, passwd), redis("tcp://127.0.0.1:6379")
 
         {
             // 在构造函数的时候就要加载
             // 把users中的所有数据都加载进去
-            string sql = "select username from users";
-            vector<vector<string>> username;
+            string sql = "select username,passwd from users";
+            vector<vector<string>> users;
             try
             {
-                if (m.Select(sql, username))
+                if (m.Select(sql, users))
                 {
                     // 获得了数据
-                    for (int i = 0; i < username.size(); i++)
+                    for (int i = 0; i < users.size(); i++)
                     {
-                        for (int j = 0; j < username[0].size(); j++)
-                        {
-                            // 获得了所有的用户的数据
-                            registered_users.set(username[i][j]); // 将所有的用户名都添加到布隆过滤器中
-                        }
+                        string username = users[i][0];
+                        string password = user[i][1];
+
+                        registered_users.set(username); // 将所有的用户名都添加到布隆过滤器中
+                        //添加到一个hash里面
                     }
                 }
                 else
@@ -95,6 +97,7 @@ namespace ns_model
 
             return false;
         }
+
         bool GetAllQuestion(vector<Question> &out) // 获得所有题目再根据登陆人的身份查看自己的题库
         {
             const string sql = "select * from oj_question;";
@@ -154,28 +157,36 @@ namespace ns_model
             }
             else
             {
-                // 要注册的用户名并没有被人给注册过
-                // 所以可以执行sql语句
-                string sql = "insert into users (username,passwd) values (" + u.username + ","
-                                                                                           "'" +
-                             u.passwd + "'"
-                                        ");";
-                // string sql = "insert into users (username,passwd) values ("+u.username+","+u.passwd+");";
-                vector<UserInfo> userlist;
-                if (Query(sql, userlist))
-                {
-                    *out = "注册成功";
-                    // 如果注册成功，就要把新加进来的这个用户名添加到布隆过滤器中
-                    registered_users.set(u.username);
+                // 这地方先使用redis进行缓存判断一下
+                // 如果缓存中得到了，就不需要再使用mysql
+                string hkey = "user:" + u.username; // 先得到需要查询的key
+                auto result = redis.hget(hkey, ) if ()
 
-                    return true;
-                }
-                else
+                                  else
                 {
-                    *out = "注册失败";
-                    throw SqlException(LogHeader(ERROR), "注册失败", sql);
+                    // 要注册的用户名并没有被人给注册过
+                    // 所以可以执行sql语句
+                    string sql = "insert into users (username,passwd) values (" + u.username + ","
+                                                                                               "'" +
+                                 u.passwd + "'"
+                                            ");";
+                    // string sql = "insert into users (username,passwd) values ("+u.username+","+u.passwd+");";
+                    vector<UserInfo> userlist;
+                    if (Query(sql, userlist))
+                    {
+                        *out = "注册成功";
+                        // 如果注册成功，就要把新加进来的这个用户名添加到布隆过滤器中
+                        registered_users.set(u.username);
 
-                    return false;
+                        return true;
+                    }
+                    else
+                    {
+                        *out = "注册失败";
+                        throw SqlException(LogHeader(ERROR), "注册失败", sql);
+
+                        return false;
+                    }
                 }
             }
         }

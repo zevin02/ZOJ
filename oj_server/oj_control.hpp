@@ -28,7 +28,6 @@ namespace ns_control
         int port;
         uint64_t load; // 负载情况
         mutex *_mtx;   // mutex禁止拷贝，使用指针
-
     public:
         Machine()
             : ip(""), port(0), _mtx(nullptr)
@@ -300,11 +299,12 @@ namespace ns_control
         // 还需要有构建成网页的view
         View _view; // 提供网页绚烂的功能
         LoadBalance load_balance;//负载均衡器
-        
+        //连接上redis服务器,对mysql进行数据的缓存      
 
     public:
         Control()
         {
+
         }
         ~Control()
         {
