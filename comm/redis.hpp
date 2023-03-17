@@ -28,20 +28,26 @@ private:
         redisFree(c);
         freeReplyObject(pm_rr);
     }
-public:
-    vector<string> multipledata(string command)//获得多种的数据
+
+    redisReply *execute_command(string command) // 执行命令
     {
+
         pm_rr = (redisReply *)redisCommand(c, command.c_str());
 
-        // string s = pm_rr->str;
-        size_t size = pm_rr->elements;
-        vector<string> ret;
-        for (int i = 0; i < size; i++)
+        if (pm_rr == NULL)
         {
-            string s = (pm_rr->element[i])->str;
-            ret.push_back(move(s));
+            fprintf(stderr, "Can't execute redis command: %s\n", command.c_str());
+            redisFree(c);
+            exit(1);
         }
-        return ret;
+        if (pm_rr->type == REDIS_REPLY_ERROR)
+        {
+            fprintf(stderr, "Redis command failed: %s\n", pm_rr->str);
+            freeReplyObject(c);
+            exit(1);
+        }
+
+        return pm_rr;
     }
 
 public:
@@ -54,56 +60,37 @@ public:
         disconnect();
     }
 
-    void set(string command) // 增加数据
+    void adddata(string command) // 所有的向redis里面添加数据的都调用这个
     {
-        pm_rr = (redisReply *)redisCommand(c, command.c_str());
+        execute_command(command);
     }
-
     bool exists(string command) // 判断某个key是否在数据库里面
     {
         pm_rr = (redisReply *)redisCommand(c, command.c_str());
         return pm_rr->integer; //
     }
-    string get(string command) // 获得数据库里面的数据
+    vector<string> multipledata(string command) // 获得多个字符串
     {
-        pm_rr = (redisReply *)redisCommand(c, command.c_str());
+        pm_rr = (redisReply *)execute_command(command);
+
+        // string s = pm_rr->str;
+        size_t size = pm_rr->elements;
+        vector<string> ret;
+        for (int i = 0; i < size; i++)
+        {
+            string s = (pm_rr->element[i])->str;
+            ret.push_back(move(s));
+        }
+        return ret;
+    }
+    string singledata(string command) // 这个地方只获得一个字符串
+    {
+        pm_rr = (redisReply *)execute_command(command);
         return pm_rr->str;
     }
 
-    vector<string> smembers(string command) // 获得set里面的数据
-    {
-        return multipledata(command);
-    }
     void del(string command) // 删除数据库中的一个key
     {
-        pm_rr = (redisReply *)redisCommand(c, command.c_str());
-    }
-    vector<string> hmget(string command) // 在hash表里面获得字符串
-    {
-        return multipledata(command);
-    }
-    vector<string> lrange(string command) // 获得list里面的所有值
-    {
-        return multipledata(command);
-    }
-    void SetData(string command)
-    {
-        // 设置数据库里面的数据
-        pm_rr = (redisReply *)redisCommand(c, command.c_str());
-    }
-    map<string, string> GetGroupApplyInfo(string command) // 获得申请加入群的名单，包含群+人
-    {
-        map<string, string> ret;
-        string key, value;
-        pm_rr = (redisReply *)redisCommand(c, command.c_str());
-        for (int i = 0; i < pm_rr->elements; i++)
-        {
-            string ll = pm_rr->element[i]->str;
-            size_t pos = ll.find("|");
-            value = ll.substr(0, pos);
-            key = ll.substr(pos + 1);
-            ret[key] = value;
-        }
-        return ret;
+        execute_command(command);
     }
 };
