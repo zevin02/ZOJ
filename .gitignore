@@ -34,3 +34,5 @@
 oj_server/conf/*
 oj_server/questions/*
 test*
+.vscode
+oj/oj_server/oj_modelfile.hpp

@@ -24,7 +24,23 @@ namespace ns_exception
             return ret;
         }
     };
-
+    //添加
+    class RedisException : public Exception
+    {
+        private:
+        string _command;
+        public:
+        RedisException(const string &header, const string &errmsg,const string &command)
+        :Exception(header,errmsg),_command(command)
+        {
+        }
+        virtual string what() const //添加redis报错
+        {
+            string ret = _header + "RedisException->" + _errmsg + "command:" + _command;
+            return ret;
+            
+        }
+    };
     class SqlException : public Exception
     {
     private:
@@ -38,7 +54,7 @@ namespace ns_exception
         virtual string what() const
         {
             // sql类完成对what的重写
-            string ret = _header + "sqlexception->" + _errmsg + ",sql:" + _sql;
+            string ret = _header + "SqlException->" + _errmsg + ",sql:" + _sql;
             return ret;
         }
     };

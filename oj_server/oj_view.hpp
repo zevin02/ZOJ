@@ -2,9 +2,8 @@
 // 充当渲染功能
 #include <iostream>
 #include <ctemplate/template.h>
-
 // #include "oj_model.hpp"
-#include"oj_modelsql.hpp"
+#include"oj_model.hpp"
 
 using namespace ns_model;
 
@@ -23,6 +22,7 @@ namespace ns_view
         }
         void AllExpand(const vector<Question> &all,string*& html)
         {
+            
             //题目的编号，标题，难度，使用表格显示
             //形成路径
             string src_html=template_path+"allquestion.html";
