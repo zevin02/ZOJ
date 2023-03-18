@@ -16,7 +16,7 @@ int main()
     // mysql版本
     try
     {
-        
+
         svr.set_base_dir("./www_root");                                                     // 设置根目录
         svr.Get("/all_question", [&](const httplib::Request &req, httplib::Response &res) { // 返回的一张包含所有题目的网页
             string html;
@@ -53,6 +53,7 @@ int main()
         // User u;
         svr.Post("/register", [&](const httplib::Request &req, httplib::Response &res)
                  {
+                
                  string out;
                 ctrl.Register(req.body,&out);
                  res.set_content(out, "text/plain;cahrset=utf-8"); });
@@ -67,17 +68,18 @@ int main()
         string html;
         FileUtil::ReadFile("./www_root/load.html",html,true);
         res.set_content(html,"text/html;charset=utf8"); });
+
         svr.Get("/registerpage", [&](const httplib::Request &req, httplib::Response &res) // 获得注册页面
                 {
         string html;
         FileUtil::ReadFile("./www_root/register.html",html,true);
         res.set_content(html,"text/html;charset=utf8"); });
+        
         svr.listen("0.0.0.0", 8080);
     }
     catch (const Exception &e)
     {
         cout << e.what() << endl;
-        
     }
     return 0;
 }

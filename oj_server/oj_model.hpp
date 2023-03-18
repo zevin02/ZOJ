@@ -13,7 +13,8 @@ using namespace std;
 #include <mysql/mysql.h>
 #include "../comm/exception.hpp"
 #include "../comm/redis.hpp"
-
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
 // 将所有的题目加载到内存中
 namespace ns_model
 {
@@ -200,18 +201,21 @@ namespace ns_model
         }
         bool Query(const string &sql, vector<UserInfo> &userlist) // 在数据库中加载机器
         {
-            if (!m.Query(sql))
+            if (m.Query(sql))
             {
                 // LOG(ERROR) << sql << endl;
-                return false;
+                return true;
             }
-            return true;
+            return false;
         }
 
         bool Register(const string &injson, string *out) // 注册，在布隆过滤器和redis里面进行两次对数据进行过滤
         {
+            auto body = json::parse(injson);
+            string username = body["username"];
+            string password = body["password"];
 
-            UserInfo u = JsonUtil::UserInfoDeSerialize(injson); // 把发送过来的json串进行反序列化
+            UserInfo u(username, password); // 把发送过来的json串进行反序列化
             // insert into users (username,passwd) values (11,'123');
             if (registered_users.test(u.username))
             {
@@ -241,6 +245,7 @@ namespace ns_model
                                                                                                "'" +
                                  u.passwd + "'"
                                             ");";
+
                     // string sql = "insert into users (username,passwd) values ("+u.username+","+u.passwd+");";
                     vector<UserInfo> userlist;
                     if (Query(sql, userlist))
