@@ -171,7 +171,7 @@ namespace ns_control
             }
         }
 
-        bool LoadConf(const string &sql) // 使用包装的数据库类来操作sql中加载机器,修改成
+        bool LoadConf(const string &sql) // 使用包装的数据库类来操作sql中加载机器,修改成，这个加载后面都不会被使用了，所以不需要添加到redis里面
         {
 
             vector<vector<string>> data;

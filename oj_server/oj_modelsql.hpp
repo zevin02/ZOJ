@@ -31,14 +31,21 @@ namespace ns_model
     private:
         Mysql m;
         BloomFilter<1000> registered_users; // 已经注册过的用户
-        Myredis redis;                      // 使用自己封装的redis
+        Myredis redis;                      // 使用自己封装的redis，不需要使用redis的构造函数
     public:
         Model()
-            : m(host, port, db, user, passwd), redis("tcp://127.0.0.1:6379")
+            : m(host, port, db, user, passwd)
 
         {
             // 在构造函数的时候就要加载
             // 把users中的所有数据都加载进去
+            load_mysql_to_redis();
+        }
+        ~Model()
+        {
+        }
+        bool exportUserToRedis_Bloom() // 把数据导入到redis和bloom中
+        {
             string sql = "select username,passwd from users";
             vector<vector<string>> users;
             try
@@ -69,12 +76,22 @@ namespace ns_model
                 cout << e.what() << endl;
             }
         }
-        ~Model()
+        bool load_mysql_to_redis() // 把mysql的user数据导入到redis里面
         {
+            try
+            {
+                exportUserToRedis_Bloom(); // 把mysql中的redis
+                exportQuestionToRedis();
+            }
+            catch (const Exception &e)
+            {
+                cout << e.what() << endl;
+            }
         }
         // 加载所有的题目
-        bool QueryQuestion(const string sql, vector<Question> &out)
+        bool exportQuestionToRedis()
         {
+            const string sql = "select * from oj_question;";
 
             vector<vector<string>> data;
             if (m.Select(sql, data))
@@ -94,25 +111,49 @@ namespace ns_model
 
                     q.memlimit = stoi(data[i][7]);
 
-                    out.push_back(move(q)); // 移动构造，直接把q的值放进去不弄一个新的对象出来
+                    // out.push_back(move(q)); // 移动构造，直接把q的值放进去不弄一个新的对象出来
+                    // 使用question:id作为key值
+                    string command = "hmset question:" + q.number + " number " + q.number + " title " + q.title + " star " + q.star + " desc " + q.desc + " header " + q.header + " tail " + q.tail + " cpulimit " + q.cpulimit;
+                    redis.adddata(command); // 往redis里面添加数据
                 }
                 return true;
             }
 
             return false;
         }
-
-        bool GetAllQuestion(vector<Question> &out) // 获得所有题目再根据登陆人的身份查看自己的题库
+        bool GetQuestion(vector<Question> &out, string &command) // 获得题目
         {
-            const string sql = "select * from oj_question;";
-            // const string sql="select * from some_question";
-            if (QueryQuestion(sql, out))
+            // 先获得所有的key值
+            vector<string> keys = redis.multipledata(command);
+            for (auto &key : keys)
+            {
+                string cmd = "hvals " + key; // 获得每一道题目的数据
+                vector<string> data = redis.multipledata(cmd);
+                Question q;
+                q.number = data[0]; // 获取第一列的数据
+                q.title = data[1];
+                q.star = data[2];
+                q.desc = data[3];
+                q.header = data[4];
+
+                q.tail = data[5];
+
+                q.cpulimit = stoi(data[6]);
+
+                q.memlimit = stoi(data[7]);
+                out.emplace_back(q); // 添加并返回
+            }
+        }
+        bool GetAllQuestion(vector<Question> &out) // 获得所有的题目
+        {
+            string command = "keys questions:*";
+            if (GetQuestion(sql, out)) // 获得题目我们现在访问redis即可
             {
                 return true;
             }
             else
             {
-                throw SqlException(LogHeader(ERROR), "获得题库失败", sql);
+                throw SqlException(LogHeader(ERROR), "获得题库失败", command); // 抛出异常
                 return false;
             }
         }
@@ -120,11 +161,9 @@ namespace ns_model
         {
 
             bool res = false;
-            string sql = "select * from oj_question where number=";
-            sql += number;
-            sql += ";";
+            string command = "keys question:" + number;
             vector<Question> out;
-            if (QueryQuestion(sql, out))
+            if (GetQuestion(command, out))
             {
                 if (out.size() == 1)
                 {
@@ -148,7 +187,7 @@ namespace ns_model
             return true;
         }
 
-        bool Register(const string &injson, string *out) // 注册
+        bool Register(const string &injson, string *out) // 注册，在布隆过滤器和redis里面进行两次对数据进行过滤
         {
 
             UserInfo u = JsonUtil::UserInfoDeSerialize(injson); // 把发送过来的json串进行反序列化
@@ -167,7 +206,7 @@ namespace ns_model
                 string command = "exists user:" + u.username; // 获得用户的密码
                 if (redis.exists(command))
                 {
-                    // 如果找到了,说明该用户已经被注册过了
+                    // redis缓存里面如果找到了,说明该用户已经被注册过了
                     *out = "注册失败，用户名已经存在";
                     return false;
                 }
@@ -188,7 +227,7 @@ namespace ns_model
                         *out = "注册成功";
                         // 如果注册成功，就要把新加进来的这个用户名添加到布隆过滤器中
                         registered_users.set(u.username);
-                        //这个地方也需要往redis里面缓存添加新的数据
+                        // 这个地方也需要往redis里面缓存添加新的数据
                         string command = "hmset " + "user:" + u.username + " " + u.username + " " + u.password;
                         redis.adddata(command);
                         return true;
@@ -215,40 +254,52 @@ namespace ns_model
             }
             else
             {
-                // 用户名存在，看看密码是否正确
-                string sql = "select * from users where username=";
-                sql += u.username;
-                sql += " and passwd=";
-                sql += "'";
-                sql += u.passwd;
-                sql += "'";
-                sql += ";";
-                vector<vector<string>> data;
-
-                if (m.Select(sql, data))
+                // 再使用redis进行一个过滤
+                string command = "hget user:" u.username + " password";
+                string password = redis.singledata(command);
+                if (password.empty()||u.passwd==password)
                 {
-                    if (data.empty())
-                    {
-                        // 没有数据，说明登陆失败
-                        *out = "登陆失败,密码错误";
-                        LOG(WARNING) << sql << endl;
-                        return true;
-                    }
-                    *out = "登陆成功";
-                    return true;
+                    //load failed
+                    
                 }
                 else
                 {
-                    // sql语句失败
-                    LOG(ERROR) << sql << endl;
-                    *out = "登陆失败";
-                    throw SqlException(LogHeader(ERROR), "登陆失败", sql);
 
-                    return false;
+                    // 用户名存在，看看密码是否正确
+                    string sql = "select * from users where username=";
+                    sql += u.username;
+                    sql += " and passwd=";
+                    sql += "'";
+                    sql += u.passwd;
+                    sql += "'";
+                    sql += ";";
+                    vector<vector<string>> data;
+
+                    if (m.Select(sql, data))
+                    {
+                        if (data.empty()||data!=u.passwd)
+                        {
+                            // 没有数据，说明登陆失败
+                            *out = "登陆失败,密码错误";
+                            LOG(WARNING) << sql << endl;
+                            return false;
+                        }
+                        *out = "登陆成功";
+                        return true;
+                    }
+                    else
+                    {
+                        // sql语句失败
+                        LOG(ERROR) << sql << endl;
+                        *out = "登陆失败";
+                        throw SqlException(LogHeader(ERROR), "登陆失败", sql);
+
+                        return false;
+                    }
                 }
             }
         }
-        bool TopicAdd(const string &injson, string *out)
+        bool TopicAdd(const string &injson, string *out) // 添加一个题目
         {
             // 添加题目
             Question q = JsonUtil::QuestionDeSerialize(injson); // 获得序列化的题目
