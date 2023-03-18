@@ -274,7 +274,12 @@ namespace ns_model
         bool Load(const string &injson, string *out) // 登陆
         {
 
-            UserInfo u = JsonUtil::UserInfoDeSerialize(injson);
+            // UserInfo u = JsonUtil::UserInfoDeSerialize(injson);
+            auto body = json::parse(injson);
+            string username = body["username"];
+            string password = body["password"];
+
+            UserInfo u(username, password); // 把发送过来的json串进行反序列化
             if (!registered_users.test(u.username))
             {
                 // 别人要注册的用户名已经被人给注册了所以，就注册失败

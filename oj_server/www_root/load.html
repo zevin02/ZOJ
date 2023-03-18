@@ -1,113 +1,70 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <title>Register Page</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+  <head>
+    <meta charset="UTF-8">
+    <title>Login</title>
     <style>
-        body {
-            font-family: Arial, Helvetica, sans-serif;
-            background-color: #837575;  
-        }
-        
-        .form-container{
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-        
-        .container {
-            padding: 16px;
-            background-color: #ffffff;
-            box-shadow: 0px 0px 10px rgba(0,0,0,.2);
-            border-radius: 5px;
-            width: 300px;
-        }
-
-        input[type=text], input[type=password] {
-            width: 100%;
-            padding: 12px 20px;
-            margin: 8px 0;
-            display: inline-block;
-            border: 1px solid #ccc;
-            box-sizing: border-box;
-            border-radius: 3px;
-        }
-
-        button {
-            background-color: #000000;
-            color: white;
-            padding: 14px 20px;
-            margin: 8px 0;
-            border: none;
-            cursor: pointer;
-            width: 100%;
-            border-radius: 3px;
-        }
-
-        button:hover {
-            opacity: 0.8;
-        }
-        
-        .error-msg{
-            color: red;
-            font-size: 15px;
-        }
+      #login-form {
+        width: 300px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f2f2f2;
+        border-radius: 5px;
+        box-shadow: 0px 0px 10px 0px rgba(0,0,0,0.25);
+      }
+      input[type=text], input[type=password] {
+        width: 100%;
+        padding: 10px;
+        margin: 6px 0;
+        display: inline-block;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+      }
+      button[type=submit] {
+        background-color: #4caf50;
+        color: white;
+        padding: 14px 20px;
+        margin: 8px 0;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
     </style>
-</head>
+  </head>
+  <body>
+    <div id="login-form">
+      <h1>Login</h1>
+      <form>
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" required>
 
-<body>
-    <div class="form-container">
-        <div class="container">
-            <h1>Register Page</h1>
-            <hr>
-            <form id="register-form">
-                <label for="username"><b>Username</b></label>
-                <input type="text" placeholder="Enter Username" name="username" required>
-                <label for="password"><b>Password</b></label>
-                <input type="password" placeholder="Enter Password" name="password" required>
-                <p class="error-msg" hidden>Please fill in this field.</p>
-                <button type="submit">Register</button>
-            </form>
-        </div>
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required>
+
+        <button type="submit" onclick="submitForm()">Submit</button>
+      </form>
     </div>
     
     <script>
-        const registerForm = document.querySelector('#register-form');
-        const errorMsg = document.querySelector('.error-msg');
+      function submitForm() {
+        let username = document.getElementById('username').value;
+        let password = document.getElementById('password').value;
         
-        registerForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            
-            if(registerForm.username.value === '' || registerForm.password.value === ''){
-                errorMsg.hidden = false;
-            }else{
-                errorMsg.hidden = true;
-                const xhr = new XMLHttpRequest();
-
-                xhr.onload = () => {
-                    if(xhr.status == 200){
-                        alert(xhr.responseText);
-                        window.location.href = "./login.html";
-                    }else{
-                        alert(`Error ${xhr.status}: ${xhr.statusText}`);
-                    }
-                }
-
-                xhr.onerror = () =>{
-                    alert("Request Error");
-                }
-
-                xhr.open("POST", "/register");
-                xhr.setRequestHeader('Content-Type', 'application/json');
-                xhr.send(JSON.stringify({
-                    "username": registerForm.username.value,
-                    "password": registerForm.password.value,
-                })); 
-            }
+        let data = JSON.stringify({ "username": username, "password": password });
+        
+        fetch('/clicklogin', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: data
         })
-        
+        .then(response => response.text())
+        .then(data => console.log(data))
+        .catch(error => console.error(error));
+      }
     </script>
-</body>
+  </body>
 </html>
+
