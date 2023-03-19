@@ -63,10 +63,10 @@ namespace ns_model
                         registered_users.set(username); // 将所有的用户名都添加到布隆过滤器中
                         // 添加到一个hash里面
                         // 使用的key 是user：username
-                        map<string, string> fields;
-                        fields["username"] = username;
-                        fields["password"] = password;
-                        string key = "user:" + username;
+                        // map<string, string> fields;
+                        // fields["username"] = username;
+                        // fields["password"] = password;
+                        // string key = "user:" + username;
                         string command = "hmset user:" + username + " username " + username + " password " + password;
 
                         // redis.hmset(key, fields);

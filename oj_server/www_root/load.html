@@ -1,70 +1,119 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="UTF-8">
-    <title>Login</title>
-    <style>
-      #login-form {
-        width: 300px;
-        margin: 0 auto;
-        padding: 20px;
-        background-color: #f2f2f2;
-        border-radius: 5px;
-        box-shadow: 0px 0px 10px 0px rgba(0,0,0,0.25);
-      }
-      input[type=text], input[type=password] {
-        width: 100%;
-        padding: 10px;
-        margin: 6px 0;
-        display: inline-block;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        box-sizing: border-box;
-      }
-      button[type=submit] {
-        background-color: #4caf50;
-        color: white;
-        padding: 14px 20px;
-        margin: 8px 0;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="login-form">
-      <h1>Login</h1>
-      <form>
-        <label for="username">Username:</label>
-        <input type="text" id="username" name="username" required>
 
-        <label for="password">Password:</label>
-        <input type="password" id="password" name="password" required>
+<head>
+  <meta charset="UTF-8">
+  <title>Login</title>
+  <style>
+    #login-form {
+      width: 300px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f2f2f2;
+      border-radius: 5px;
+      box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.25);
+    }
 
-        <button type="submit" onclick="submitForm()">Submit</button>
-      </form>
-    </div>
-    
-    <script>
-      function submitForm() {
-        let username = document.getElementById('username').value;
-        let password = document.getElementById('password').value;
-        
-        let data = JSON.stringify({ "username": username, "password": password });
-        
-        fetch('/clicklogin', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: data
+    input[type=text],
+    input[type=password] {
+      width: 100%;
+      padding: 10px;
+      margin: 6px 0;
+      display: inline-block;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+
+    button[type=submit] {
+      background-color: #4caf50;
+      color: white;
+      padding: 14px 20px;
+      margin: 8px 0;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="login-form">
+    <h1>Login</h1>
+    <form>
+      <label for="username">Username:</label>
+      <input type="text" id="username" name="username" required>
+
+      <label for="password">Password:</label>
+      <input type="password" id="password" name="password" required>
+
+      <button type="submit" onclick="submitForm()">Submit</button>
+    </form>
+  </div>
+
+  <script>
+    // function submitForm() {
+    //   let username = document.getElementById('username').value;
+    //   let password = document.getElementById('password').value;
+
+    //   let data = JSON.stringify({ "username": username, "password": password });
+
+    //   fetch('/clicklogin', {
+    //     method: 'POST',
+    //     headers: {
+    //       'Content-Type': 'application/json'
+    //     },
+    //     body: data
+    //   })
+    //     .then(response => {
+    //       if (response.ok) {
+    //         alert(response.text());
+    //         console.log("Login successful!"); // for debugging purposes
+    //         sessionStorage.setItem("loggedInUser", username); // stores the currently logged in user's name in sessionStorage
+    //         window.location.href = "/all_question"; // redirects to all_question on successful login
+    //       } else {
+    //         console.log("Login failed."); // for debugging purposes
+    //         throw new Error("Login failed."); // throws an error if the login fails
+    //       }
+    //     })
+    //     .catch(error => {
+    //       console.error(error);
+    //       alert("Login failed."); // shows an alert box if the login fails
+    //     });
+    // }
+    function submitForm() {
+      let username = document.getElementById('username').value;
+      let password = document.getElementById('password').value;
+
+      let data = JSON.stringify({ "username": username, "password": password });
+
+      fetch('/clicklogin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: data
+      })
+        .then(response => {
+          if (response.ok) {
+            console.log("Login successful!"); // for debugging purposes
+            sessionStorage.setItem("loggedInUser", username); // stores the currently logged in user's name in sessionStorage
+            window.location.href = "/all_question"; // redirects to all_question on successful login
+          } else {
+            console.log("Login failed."); // for debugging purposes
+            throw new Error("Login failed."); // throws an error if the login fails
+          }
+          return response.text(); // returns the response body as text
         })
-        .then(response => response.text())
-        .then(data => console.log(data))
-        .catch(error => console.error(error));
-      }
-    </script>
-  </body>
-</html>
+        .then(data => {
+          alert(data); // shows the response body in an alert box
+        })
+        .catch(error => {
+          console.error(error);
+          alert("Login failed."); // shows an alert box if the login fails
+        });
+    }
+  </script>
+</body>
 
+</html>
