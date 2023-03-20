@@ -36,7 +36,6 @@ namespace ns_model
     public:
         Model()
             : m(host, port, db, user, passwd)
-
         {
             // 在构造函数的时候就要加载
             // 把users中的所有数据都加载进去
@@ -50,6 +49,7 @@ namespace ns_model
         {
             string sql = "select username,passwd from users";
             vector<vector<string>> users;
+            // 在redis里面判断一下我们这边
             try
             {
                 if (m.Select(sql, users))
@@ -63,15 +63,13 @@ namespace ns_model
                         registered_users.set(username); // 将所有的用户名都添加到布隆过滤器中
                         // 添加到一个hash里面
                         // 使用的key 是user：username
-                        // map<string, string> fields;
-                        // fields["username"] = username;
-                        // fields["password"] = password;
-                        // string key = "user:" + username;
-                        string command = "hmset user:" + username + " username " + username + " password " + password;
-
-                        // redis.hmset(key, fields);
-
-                        redis.adddata(command);
+                        string command = "exists user:" + username;
+                        if (!redis.exists(command))
+                        {
+                            //如果该机器不存在，就添加
+                            command = "hmset user:" + username + " username " + username + " password " + password;
+                            redis.adddata(command);
+                        }
                     }
                 }
                 else
@@ -254,9 +252,6 @@ namespace ns_model
                         // 如果注册成功，就要把新加进来的这个用户名添加到布隆过滤器中
                         registered_users.set(u.username);
                         // 这个地方也需要往redis里面缓存添加新的数据
-                        map<string, string> fields;
-                        fields["username"] = u.username;
-                        fields["password"] = u.passwd;
                         string command = "hmset user:" + u.username + " username " + u.username + " password " + u.passwd;
                         redis.adddata(command);
                         return true;
