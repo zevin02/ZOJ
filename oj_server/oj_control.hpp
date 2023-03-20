@@ -12,6 +12,8 @@
 #include <mutex>
 #include <algorithm>
 #include <set>
+#include "../comm/consistent_hash.hpp"
+
 using namespace std;
 namespace ns_control
 {
@@ -117,31 +119,21 @@ namespace ns_control
     {
     private:
         map<int, Machine> machine; // 里面的所有的机器,我们使用端口号来充当主机编号,只要是预先添加到了系统中，就需要加载进来，里面就是我们预先设置了所有会运用的后端机器
-        set<int> online;           // 代表的是所有在线的主机,使用端口号来用作唯一的标识
-        set<int> offline;          // 使用布隆过滤器来判断是否存在
-        vector<int> hash;          // 用来处理一致性hash，
         // 保证在选择主机的时候，需要保证数据的安全
         mutex mtx;
         Mysql m;
+        ConsistentHash ch;
 
     public:
-        LoadBalance() // 构造函数，创建这个对象的时候，就把后端在线的机器加载进去
-            : m(host, port, db, user, passwd)
+        LoadBalance()                                 // 构造函数，创建这个对象的时候，就把后端在线的机器加载进去
+            : m(host, port, db, user, passwd), ch(32) // 我们给每个机器配上32个虚拟节点
         {
             string sql = "select * from machine_list";
             assert(LoadConf(sql) == true); // 启动的时候就加载进来了
-            // LoadConf(machinelist,sql); // 启动的时候就加载进来了
-            if (LogStatus::GetInstance().isDebugEnable())
+            if (!ch.empty()) // 在线不为空才能算接入成功
             {
-                ShowMachine();
-
-                for (auto &num : hash)
-                {
-                    LOG(DEBUG) << num << " ";
-                }
-            }
-            if (!online.empty()) // 在线不为空才能算接入成功
                 LOG(INFO) << "加载后端服务器载入成功" << endl;
+            }
         }
         ~LoadBalance()
         {
@@ -154,20 +146,18 @@ namespace ns_control
             if (res == nullptr) // 如果访问没有结果为空
             {
                 LOG(INFO) << "machine:" << port << "接入失败" << endl;
-
-                offline.insert(port);
+                ch.DeletePhysicalNode(to_string(port)); // 如果该机器不在的话，就从里面进行下线
                 // 请求成功就要添加到对应的
             }
             else
             {
-                // 请求成功,说明该机器在线
+                // 请求成功,说明该机器在线,添加到一致性hash里面
                 LOG(INFO) << "machine:" << port << "接入成功" << endl;
-                hash.push_back(port);
-                online.insert(port);
-                if (LogStatus::GetInstance().isDebugEnable())
-                {
-                    ShowMachine();
-                }
+
+                // 使用port来作为一个服务器的key值
+                string phykey = to_string(port);
+                // 如果这个在线就添加到一致性hash里面
+                ch.AddNewPhysicalNode(phykey);
             }
         }
 
@@ -185,7 +175,6 @@ namespace ns_control
                     ma.port = stoi(data[i][1]);
                     ma.load = 0;
                     ma._mtx = new mutex();
-                    // online.push_back(machine.size()); // 放进去对应的id
                     // 需要对每个服务器发起http请求，如果在线的话，就添加到online服务器中,否则就添加到offline中
                     AskCompile(ma.ip, ma.port);
 
@@ -210,20 +199,23 @@ namespace ns_control
             // 1.随机数+hash，保证了每台主机都有一定的概率可以被选择到
             // 2.轮询+hash
             // unique_lock<mutex> lock(mtx);
-            int online_num = online.size();
+            int online_num = ch.size();
             if (online_num == 0)
             {
                 // 没有在线的主机了
                 LOG(FATAL) << "所有后端的编译主机已经全部离线了，需要尽快修复" << endl;
                 return false;
             }
-            //通过哈希算法来计算一个一个哈希值，再和现在总共的机器数取模得到一个特定的值
-            long key = stol(TimeUtil::GetTimeMs()); // 使用毫秒级时间戳计算一个key
-            int randon = key % hash.size();         // 和当前在线的机器数量进行取模
+            // 通过哈希算法来计算一个一个哈希值，再和现在总共的机器数取模得到一个特定的值
 
-            int port = hash[randon];
-            *id = port;
-            *m = &machine[port];
+            // long key = stol(TimeUtil::GetTimeMs()); // 使用毫秒级时间戳计算一个key
+            string key = TimeUtil::GetTimeMs();   // 使用毫秒级时间戳计算一个key
+            string port = ch.GetserverIndex(key); // 根据该毫秒级的时间戳获得他对应的机器的端口号
+            // int randon = key % hash.size();         // 和当前在线的机器数量进行取模
+
+            // int port = hash[stoi(randon)];
+            *id = stoi(port);
+            *m = &machine[stoi(port)]; // 因为machine里面包含的就是所有的机器
 
             if (LogStatus::GetInstance().isDebugEnable())
             {
@@ -241,34 +233,7 @@ namespace ns_control
             machine[which].ResetLoad();
             // 要离线的主机找到了
             // 就要把这个元素给删除掉
-            online.erase(which); // 删除这个元素对应的数据
-
-            offline.insert(which);
-            for (auto iter = hash.begin(); iter != hash.end(); iter++) // 删除对应的hash值
-            {
-                if (*iter == which)
-                {
-                    hash.erase(iter);
-
-                    break;
-                }
-            }
-        }
-        void ShowMachine() // 打印机器状态
-        {
-            unique_lock<mutex> lock(mtx);
-            cout << "当前在线主机列表:" << endl;
-            for (auto &id : online)
-            {
-                cout << id << " " << endl;
-            }
-            cout << endl;
-            cout << "当前离线主机列表:" << endl;
-            for (auto &id : offline)
-            {
-                cout << id << " " << endl;
-            }
-            cout << endl;
+            ch.DeletePhysicalNode(to_string(which));
         }
 
         void OnlineMachine() // 就需要发送过去http请求
@@ -284,27 +249,23 @@ namespace ns_control
         }
         void OnlineAdd(const string &ip, const int port) // 后端机器上线，添加到在线列表中
         {
-            online.insert(port);
-            hash.push_back(port);
-            // 从离线列表中去除
-            offline.erase(port);
+            ch.AddNewPhysicalNode(to_string(port)); // 后端机器上线值后，就把他添加到一致性hash里面的机器上
         }
     };
 
     class Control
     {
     private:
-    //在control中控制数据和视图
+        // 在control中控制数据和视图
         Model _model; // 数据
         // 还需要有构建成网页的view
-        View _view; // 提供网页绚烂的功能
-        LoadBalance load_balance;//负载均衡器
-        //连接上redis服务器,对mysql进行数据的缓存      
+        View _view;               // 提供网页绚烂的功能
+        LoadBalance load_balance; // 负载均衡器
+        // 连接上redis服务器,对mysql进行数据的缓存
 
     public:
         Control()
         {
-
         }
         ~Control()
         {
@@ -331,7 +292,7 @@ namespace ns_control
                 // 获得成功,将所有的题目数据构成一个网页
                 // 将所有获得的数据按照序号从小到大进行排序
                 sort(all.begin(), all.end(), [](const Question &s1, const Question &s2)
-                     { return stoi(s1.number) < stoi(s2.number); });//使用Lambda表达式
+                     { return stoi(s1.number) < stoi(s2.number); }); // 使用Lambda表达式
                 _view.AllExpand(all, html);
 
                 return true;
@@ -397,7 +358,7 @@ namespace ns_control
                 // 发起请求
                 m->Increasement();
                 LOG(INFO) << "选择主机成功,主机ID:" << id << "详情:" << m->ip << ":" << m->port << "该主机的负载情况:" << m->load << endl;
-
+                // 这里根据机器的的端口号如果请求成功，就载入
                 if (auto res = cli.Post("/compile_run", compile_string, "application/json;charset=utf-8"))
                 {
                     // 成功了,完成了对应的请求
@@ -417,7 +378,7 @@ namespace ns_control
                 }
                 else
                 {
-                    // 请求失败
+                    // 请求失败，我们就需要进行下线，把该机器从一致性hash里面踢出去
                     // 没有得到任何响应
                     LOG(ERROR) << "当前请求的主机无响应,主机ID:" << m->ip << ":" << m->port << ",当前主机可能已经离线" << endl;
 
