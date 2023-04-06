@@ -122,7 +122,7 @@ namespace ns_control
         // 保证在选择主机的时候，需要保证数据的安全
         mutex mtx;
         Mysql m;
-        ConsistentHash ch;
+        ConsistentHash ch;//添加一致性hash进来
 
     public:
         LoadBalance()                                 // 构造函数，创建这个对象的时候，就把后端在线的机器加载进去

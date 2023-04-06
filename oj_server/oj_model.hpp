@@ -96,43 +96,7 @@ namespace ns_model
                 cout << e.what() << endl;
             }
         }
-        // 加载所有的题目
-        // bool exportQuestionToRedis()
-        // {
-        //     const string sql = "select * from oj_question;";
 
-        //     vector<vector<string>> data;
-        //     if (m.Select(sql, data))
-        //     {
-        //         for (int i = 0; i < data.size(); i++)
-        //         {
-        //             vector<pair<string, string>> fields;
-        //             fields.emplace_back(make_pair("number", data[i][0]));   // 获取第一列的数据
-        //             fields.emplace_back(make_pair("title", data[i][1]));    // 获取第一列的数据
-        //             fields.emplace_back(make_pair("star", data[i][2]));     // 获取第一列的数据
-        //             fields.emplace_back(make_pair("desc", data[i][3]));     // 获取第一列的数据
-        //             fields.emplace_back(make_pair("headr", data[i][4]));    // 获取第一列的数据
-        //             fields.emplace_back(make_pair("tail", data[i][5]));     // 获取第一列的数据
-        //             fields.emplace_back(make_pair("cpulimit", data[i][6])); // 获取第一列的数据
-        //             fields.emplace_back(make_pair("memlimit", data[i][7])); // 获取第一列的数据
-        //             // fields["title"] = data[i][1];
-        //             // fields["star"] = data[i][2];
-        //             // fields["desc"] = data[i][3];
-        //             // fields["header"] = data[i][4];
-
-        //             // fields["tail"] = data[i][5];
-        //             // fields["cpulimit"] = data[i][6];
-
-        //             // fields["memlimit"] = data[i][7];
-
-        //             string key = "question:" + data[i][0];
-        //             redis.hmsetforquestion(key, fields);
-        //         }
-        //         return true;
-        //     }
-
-        //     return false;
-        // }
         bool QueryQuestion(const string sql, vector<Question> &out)
         {
 
