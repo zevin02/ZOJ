@@ -1,8 +1,18 @@
 
 #include "compile_run.hpp"
 #include "../comm/httplib.h"
+#include "../comm/rpc.hpp"
+
 // 编译服务随时可能被多个用户请求，我们要保证链接上来的代码，具有唯一性，不然，不同的用户之间就会互相影响
 using namespace ns_compile_run;
+
+string Start(const string &injson) //远程rpc调用这个函数，再去调用真正处理的函数
+{
+  string outjson;
+  CompileRun::Start(injson, outjson);
+  return outjson; //返回输出的结果
+}
+
 int main(int argc, char *argv[])
 {
   if (argc != 2)
@@ -20,7 +30,6 @@ int main(int argc, char *argv[])
   httplib::Client cli("127.0.0.1", 8080);            // 绑定主机和端口
                                                      //
                                                      // 我需要把自己的ip和端口号传送给服务器
-  httplib::Server svr;
 
   try
   {
@@ -46,29 +55,18 @@ int main(int argc, char *argv[])
 
     // 要将提供的服务编译服务，转化成网络服务
     // 这个就是提前注册响应服务，如果请求该服务，就会去调用这个回调方法
-    svr.Post("/compile_run", [](const httplib::Request &req, httplib::Response &res)
-             {
-      string injson=req.body;//post,请求就在正文中
-      string outjson;
-      LOG(INFO)<<"获得请求"<<endl;
-      if(!injson.empty())
-      {
-        //传入的数据不为空
-        CompileRun::Start(injson, outjson);
 
-        res.set_content(outjson,"application/json;charset=utf-8");
-
-      } });
-
-    svr.Get("/oj_judgeonline", [&](const httplib::Request &req, httplib::Response &res)
-            { res.set_content("i am online", "text/plain"); });
+    //这个地方我们使用一个rpc来进行操作
+    rpc server;
+    server.as_server(atoi(argv[1])); //绑定上端口号
+    //执行响应的函数
+    server.regist("Start", Start);
+    server.run();
   }
   catch (const Exception &e)
   {
     cout << e.what() << endl;
   }
-  svr.listen("0.0.0.0", atoi(argv[1])); // 启动http服务
-
   // string code="code";
   // Compiler::Compile(code);
   // Runner::Run(code,1,60);

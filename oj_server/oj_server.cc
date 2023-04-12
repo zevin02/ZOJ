@@ -41,7 +41,7 @@ int main()
         std::string num=req.matches[1];//获得题号码,可以进行正则表达式的匹配
         // cout<<req.matches[0]<<endl;
         string ret;
-        ctrl.Judge(num,req.body,ret);//在正文中就存在请求的json串
+        ctrl.Judge(num,req.body,ret);//在正文中就存在请求的json串，使用rpc来对后端请求进行一个响应
 
         res.set_content(ret,"application/json;charset=utf8"); });
 

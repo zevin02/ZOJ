@@ -13,7 +13,7 @@
 #include <algorithm>
 #include <set>
 #include "../comm/consistent_hash.hpp"
-
+#include "../comm/rpc.hpp"
 using namespace std;
 namespace ns_control
 {
@@ -21,6 +21,7 @@ namespace ns_control
     using namespace ns_log;
     using namespace ns_util;
     using namespace ns_model;
+    rpc client;//这里放一个全局的请求后端响应的客户端
 
     // 提供服务的主机，一台机器对应一个后端编译运行服务
     class Machine
@@ -122,7 +123,7 @@ namespace ns_control
         // 保证在选择主机的时候，需要保证数据的安全
         mutex mtx;
         Mysql m;
-        ConsistentHash ch;//添加一致性hash进来
+        ConsistentHash ch; //添加一致性hash进来
 
     public:
         LoadBalance()                                 // 构造函数，创建这个对象的时候，就把后端在线的机器加载进去
@@ -130,7 +131,7 @@ namespace ns_control
         {
             string sql = "select * from machine_list";
             assert(LoadConf(sql) == true); // 启动的时候就加载进来了
-            if (!ch.empty()) // 在线不为空才能算接入成功
+            if (!ch.empty())               // 在线不为空才能算接入成功
             {
                 LOG(INFO) << "加载后端服务器载入成功" << endl;
             }
@@ -359,32 +360,24 @@ namespace ns_control
                 m->Increasement();
                 LOG(INFO) << "选择主机成功,主机ID:" << id << "详情:" << m->ip << ":" << m->port << "该主机的负载情况:" << m->load << endl;
                 // 这里根据机器的的端口号如果请求成功，就载入
-                if (auto res = cli.Post("/compile_run", compile_string, "application/json;charset=utf-8"))
-                {
-                    // 成功了,完成了对应的请求
-                    // 状态码为200的时候才是完成成功的
-                    if (res->status == 200)
-                    {
-                        outjson = res->body; // outjson里面就是对应的返回回来的数据
-                        m->Decreasement();
-                        LOG(INFO) << "请求编译运行服务成功" << endl;
-                        break;
-                    }
+                client.as_client(m->ip, m->port);
+                outjson = client.call<string>("Start", compile_string).value();
 
-                    // 不等于200,访问到目标主机但是结果是不对的
-                    //  请求成功了就要减少负载
-                    LOG(ERROR) << "请求服务失败status=" << res->status << endl;
+                if (!outjson.empty()) //如果当前有数据
+                {
+                    //说明服务运行成功
                     m->Decreasement();
+                    cout << "outjson: " << outjson << endl;
+                    LOG(INFO) << "请求编译运行服务成功" << endl;
+                    break;
                 }
                 else
                 {
-                    // 请求失败，我们就需要进行下线，把该机器从一致性hash里面踢出去
-                    // 没有得到任何响应
+                    //服务运行失败
                     LOG(ERROR) << "当前请求的主机无响应,主机ID:" << m->ip << ":" << m->port << ",当前主机可能已经离线" << endl;
-
-                    load_balance.Offlinemachine(id); // 把某台主机下线
-                    // load_balance.ShowMachine();      // 只是用来调试
+                    load_balance.Offlinemachine(id); // 把某台主机下线，并且重新进行请求
                 }
+                
             }
 
             // 在service.conf可以查看哪个主机上线了
