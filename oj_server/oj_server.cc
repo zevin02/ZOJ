@@ -17,17 +17,15 @@ int main()
     try
     {
 
-        svr.set_base_dir("./www_root");                                                     // 设置根目录
-        svr.Get("/all_question", [&](const httplib::Request &req, httplib::Response &res) { // 返回的一张包含所有题目的网页
+        svr.set_base_dir("./www_root");                                                         // 设置根目录
+        svr.Get("/all_question", [&ctrl](const httplib::Request &req, httplib::Response &res) { // 返回的一张包含所有题目的网页
             string html;
             if (ctrl.GetAllQuestions(&html))
-            {
                 res.set_content(html, "text/html;charset=utf8");
-            }
         });
         // 用户要更具题目编号，获得题目内容
         /// question/100正则匹配
-        svr.Get(R"(/question/(\d+))", [&](const httplib::Request &req, httplib::Response &res)
+        svr.Get(R"(/question/(\d+))", [&ctrl](const httplib::Request &req, httplib::Response &res)
                 {
         std::string num=req.matches[1];//获得题号码,可以进行正则表达式的匹配
         string html;
@@ -36,45 +34,42 @@ int main()
         // 用户提交代码，使用我们的判题功能
         //(1.每道题的测试用力2.compile_run)
 
-        svr.Post(R"(/judge/(\d+))", [&](const httplib::Request &req, httplib::Response &res)
+        svr.Post(R"(/judge/(\d+))", [&ctrl](const httplib::Request &req, httplib::Response &res)
                  {
         std::string num=req.matches[1];//获得题号码,可以进行正则表达式的匹配
-        // cout<<req.matches[0]<<endl;
         string ret;
         ctrl.Judge(num,req.body,ret);//在正文中就存在请求的json串，使用rpc来对后端请求进行一个响应
-
         res.set_content(ret,"application/json;charset=utf8"); });
 
-        svr.Post("/online", [&](const httplib::Request &req, httplib::Response &res)
+        svr.Post("/online", [&ctrl](const httplib::Request &req, httplib::Response &res)
                  {
-                 string out;
-                 ctrl.Access(req.body, out);
-                 res.set_content(out, "text/plain;cahrset=utf-8"); });
+        string out;
+        ctrl.Access(req.body, out);
+        res.set_content(out, "text/plain;cahrset=utf-8"); });
         // User u;
-        svr.Post("/register", [&](const httplib::Request &req, httplib::Response &res)
+        svr.Post("/register", [&ctrl](const httplib::Request &req, httplib::Response &res)
                  {
-                
-                 string out;
-                ctrl.Register(req.body,&out);
-                 res.set_content(out, "text/plain;cahrset=utf-8"); });
-        svr.Post("/clicklogin", [&](const httplib::Request &req, httplib::Response &res)
+        string out;
+        ctrl.Register(req.body,&out);
+        res.set_content(out, "text/plain;cahrset=utf-8"); });
+        svr.Post("/clicklogin", [&ctrl](const httplib::Request &req, httplib::Response &res)
                  {
-                 string out;
-                ctrl.Load(req.body,&out);
-                 res.set_content(out, "text/plain;cahrset=utf-8"); });
+        string out;
+        ctrl.Login(req.body,&out);
+        res.set_content(out, "text/plain;cahrset=utf-8"); });
 
-        svr.Get("/login", [&](const httplib::Request &req, httplib::Response &res) // 获得页面
+        svr.Get("/login", [&ctrl](const httplib::Request &req, httplib::Response &res) // 获得页面
                 {
         string html;
         FileUtil::ReadFile("./www_root/load.html",html,true);
         res.set_content(html,"text/html;charset=utf8"); });
 
-        svr.Get("/registerpage", [&](const httplib::Request &req, httplib::Response &res) // 获得注册页面
+        svr.Get("/registerpage", [&ctrl](const httplib::Request &req, httplib::Response &res) // 获得注册页面
                 {
         string html;
         FileUtil::ReadFile("./www_root/register.html",html,true);
         res.set_content(html,"text/html;charset=utf8"); });
-        
+
         svr.listen("0.0.0.0", 8080);
     }
     catch (const Exception &e)
