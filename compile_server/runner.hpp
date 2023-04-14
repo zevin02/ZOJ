@@ -27,7 +27,7 @@ namespace ns_runner
 
         //cpu_limit:程序运行时，可以使用的最大CPU资源上限
         //mem_limit:程序运行时，可以使用的最大内存大小(KB)
-        static void SetProcLimit(int _cpu,int _mem)//设置
+        static void SetProcLimit(const int& _cpu,const int& _mem)//设置
         {
             //设置CPU时长
             struct rlimit cpulimit;
@@ -42,8 +42,8 @@ namespace ns_runner
             setrlimit(RLIMIT_AS,&memlimit);
         }
         // 只需要指明文件名，不需要带路径和后缀
-
-        static int Run(const string &filename,int cpu_limit,int mem_limit)
+        // 运行相应的程序
+        static int Run(const string &filename,const int& cpu_limit,int mem_limit)
         {
             /*
                 返回值 >0:程序异常了，返回值就是对应的信号
@@ -104,6 +104,7 @@ namespace ns_runner
                 //运行可执行文件
                 //./a.out，并把输出的结果放到临时文件中
                 execl(exe_file.c_str(),exe_file.c_str(),nullptr);//execl带的是路径，就是我们需要的，而不是他的文件名
+                throw CompilerException(LogHeader(ERROR),"execl error at runtime");//fork失败抛出异常
                 exit(1);
             }
             else

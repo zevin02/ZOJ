@@ -26,7 +26,7 @@ namespace ns_compile_run
         // stdout:输出结果
         // stderr：程序运行完的错误结果
 
-        static string CodeToDesc(int code, const string &filename)//从返回的值获得对应的描述
+        static string CodeToDesc(const int& code, const string &filename)//从返回的值获得对应的描述
         {
             // code>0信号导致崩溃
             // code<0编译运行时出现的内部错误
@@ -157,6 +157,7 @@ namespace ns_compile_run
             
             string src = PathUtil::Src(file_name);
             // 如果存在就删除
+            
             if (FileUtil::Exists(src))
                 unlink(src.c_str()); // 存在就删除,unlink就是把该文件的inode减少，如果减少到0说明就直接删除了
             string cpe = PathUtil::Compile_Error(file_name);

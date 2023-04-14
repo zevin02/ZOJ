@@ -30,29 +30,31 @@ namespace ns_model
     class Model
     {
     private:
-        Mysql m;
-        BloomFilter<1000> registered_users; // 已经注册过的用户
-        Myredis redis;                      // 使用自己封装的redis，不需要使用redis的构造函数
+    //使用智能指针来维护数据库
+        unique_ptr<MySQL> mysql;
+        BloomFilter<1000> registeredUser; // 已经注册过的用户
+        unique_ptr<MyRedis> redis;        // 使用自己封装的redis，不需要使用redis的构造函数
     public:
         Model()
-            : m(host, port, db, user, passwd)
         {
             // 在构造函数的时候就要加载
             // 把users中的所有数据都加载进去
-            load_mysql_to_redis();
+            redis=unique_ptr<MyRedis>(new MyRedis);
+            mysql=unique_ptr<MySQL>(new MySQL(host,port,db,user,passwd));
+            loadMysql2Redis();
         }
         ~Model()
         {
         }
 
-        bool exportUserToRedis_Bloom() // 把数据导入到redis和bloom中
+        bool exportUser2Redis_Bloom() // 把用户数据导入到redis和bloom中
         {
-            string sql = "select username,passwd from users";
+            constexpr const char* sql = "select username,passwd from users";//
             vector<vector<string>> users;
             // 在redis里面判断一下我们这边
             try
             {
-                if (m.Select(sql, users))
+                if (mysql->Select(sql, users))
                 {
                     // 获得了数据
                     for (int i = 0; i < users.size(); i++)
@@ -60,15 +62,15 @@ namespace ns_model
                         string username = users[i][0];
                         string password = users[i][1];
 
-                        registered_users.set(username); // 将所有的用户名都添加到布隆过滤器中
+                        registeredUser.set(username); // 将所有的用户名都添加到布隆过滤器中
                         // 添加到一个hash里面
                         // 使用的key 是user：username
                         string command = "exists user:" + username;
-                        if (!redis.exists(command))
+                        if (!redis->exists(command))
                         {
                             //如果该机器不存在，就添加
                             command = "hmset user:" + username + " username " + username + " password " + password;
-                            redis.adddata(command);
+                            redis->addData(command);
                         }
                     }
                 }
@@ -84,11 +86,11 @@ namespace ns_model
             }
             return false;
         }
-        void load_mysql_to_redis() // 把mysql的user数据导入到redis里面
+        void loadMysql2Redis() // 把mysql的user数据导入到redis里面
         {
             try
             {
-                exportUserToRedis_Bloom(); // 把mysql中的redis
+                exportUser2Redis_Bloom(); // 把mysql中的redis
                 // exportQuestionToRedis();//把题目导入到redis中，大文本文件使用redis很不好用，之后使用mongodb来进行操作修改
             }
             catch (const Exception &e)
@@ -101,7 +103,7 @@ namespace ns_model
         {
 
             vector<vector<string>> data;
-            if (m.Select(sql, data))
+            if (mysql->Select(sql, data))
             {
                 for (int i = 0; i < data.size(); i++)
                 {
@@ -163,7 +165,7 @@ namespace ns_model
         }
         bool Query(const string &sql, vector<UserInfo> &userlist) // 在数据库中加载机器
         {
-            if (m.Query(sql))
+            if (mysql->Query(sql))
             {
                 // LOG(ERROR) << sql << endl;
                 return true;
@@ -179,7 +181,7 @@ namespace ns_model
 
             UserInfo u(username, password); // 把发送过来的json串进行反序列化
             // insert into users (username,passwd) values (11,'123');
-            if (registered_users.test(u.username))
+            if (registeredUser.test(u.username))
             {
                 // 别人要注册的用户名已经被人给注册了所以，就注册失败
                 *out = "注册失败，用户名已经存在";
@@ -191,7 +193,7 @@ namespace ns_model
                 // 如果缓存中得到了，就不需要再使用mysql
                 // string hkey = "user:" + u.username; // 先得到需要查询的key
                 string command = "exists user:" + u.username; // 获得用户的密码
-                if (redis.exists(command))
+                if (redis->exists(command))
                 {
                     // redis缓存里面如果找到了,说明该用户已经被注册过了
                     *out = "注册失败，用户名已经存在";
@@ -214,10 +216,10 @@ namespace ns_model
                     {
                         *out = "注册成功";
                         // 如果注册成功，就要把新加进来的这个用户名添加到布隆过滤器中
-                        registered_users.set(u.username);
+                        registeredUser.set(u.username);
                         // 这个地方也需要往redis里面缓存添加新的数据
                         string command = "hmset user:" + u.username + " username " + u.username + " password " + u.passwd;
-                        redis.adddata(command);
+                        redis->addData(command);
                         return true;
                     }
                     else
@@ -239,7 +241,7 @@ namespace ns_model
             string password = body["password"];
 
             UserInfo u(username, password); // 把发送过来的json串进行反序列化
-            if (!registered_users.test(u.username))
+            if (!registeredUser.test(u.username))
             {
                 // 别人要注册的用户名已经被人给注册了所以，就注册失败
                 *out = "登陆失败，用户名不存在";
@@ -249,7 +251,7 @@ namespace ns_model
             {
                 // 再使用redis进行一个过滤
                 string command = "hget user:" + u.username + " password";
-                string password = redis.singledata(command);
+                string password = redis->getSingleData(command);
                 if (!password.empty() || u.passwd == password)
                 {
                     // load failed
@@ -269,7 +271,7 @@ namespace ns_model
                     sql += ";";
                     vector<vector<string>> data;
 
-                    if (m.Select(sql, data))
+                    if (mysql->Select(sql, data))
                     {
                         if (data.empty())
                         {
@@ -306,7 +308,7 @@ namespace ns_model
         bool GetInfo(const string &sql)
         {
             vector<vector<string>> data;
-            if (m.Select(sql, data))
+            if (mysql->Select(sql, data))
             {
                 for (int i = 0; i < data.size(); i++)
                 {

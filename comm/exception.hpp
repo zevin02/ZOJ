@@ -27,18 +27,18 @@ namespace ns_exception
     //添加
     class RedisException : public Exception
     {
-        private:
+    private:
         string _command;
-        public:
-        RedisException(const string &header, const string &errmsg,const string &command)
-        :Exception(header,errmsg),_command(command)
+
+    public:
+        RedisException(const string &header, const string &errmsg, const string &command)
+            : Exception(header, errmsg), _command(command)
         {
         }
         virtual string what() const //添加redis报错
         {
             string ret = _header + "RedisException->" + _errmsg + "command:" + _command;
             return ret;
-            
         }
     };
     class SqlException : public Exception
@@ -58,19 +58,30 @@ namespace ns_exception
             return ret;
         }
     };
-    class CompilerException:public Exception
+    class CompilerException : public Exception
     {
-        private:
-        public:
-        CompilerException(const string& header,const string &errmsg)
-        :Exception(header,errmsg)
+    private:
+    public:
+        CompilerException(const string &header, const string &errmsg)
+            : Exception(header, errmsg)
         {
         }
-        virtual string what()const 
+        virtual string what() const
         {
-            string ret=_header+"CompileException->"+_errmsg;
+            string ret = _header + "CompileException->" + _errmsg;
             return ret;
         }
     };
-
+    class UtilException : public Exception
+    {
+    public:
+        UtilException(const string &header, const string &errmsg)
+        : Exception(header, errmsg)
+        {}
+                virtual string what() const
+        {
+            string ret = _header + "UtilException->" + _errmsg;
+            return ret;
+        }
+    };
 };

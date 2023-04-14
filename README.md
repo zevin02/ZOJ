@@ -2,7 +2,7 @@
 - [依赖](#依赖)
 - [安装](#安装)
 - [文件架构](#文件架构)
-- [示例](#示例)
+- [效果](#效果)
 - [编译服务器](#编译服务器)
 - [在线服务器](#在线服务器)
 - [数据库](#数据库)
@@ -44,7 +44,7 @@ make
 * compile_server
 存放compile_server端代码
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/b77dddfffe524531a4e07e8b93caa7f2.png)
-# 示例
+# 效果
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/351277984473464488864b6aec8cab67.png)
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/2dfb141411f949d2afc80e326c203b76.png)![在这里插入图片描述](https://img-blog.csdnimg.cn/2510edba06c84f569635190f991118a3.png)
 

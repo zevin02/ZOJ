@@ -14,6 +14,7 @@ using namespace std;
 #include <mysql/mysql.h>
 #include "structure.hpp"
 #include <jsoncpp/json/json.h>
+
 namespace ns_util
 {
     class TimeUtil
@@ -53,42 +54,43 @@ namespace ns_util
             path += suffix;
             return path;
         }
-        //
-        static string Src(const string &file_name)
+        //构造出原文件名
+        static inline string Src(const string &file_name)
         {
             return AddSuffix(file_name, ".cpp");
         }
         // 形成完整的可执行程序路径
-        static string Extension(const string &file_name)
+        static inline string Extension(const string &file_name)
         {
             return AddSuffix(file_name, ".out");
         }
         // 构建出错信息
 
-        static string Compile_Error(const string &file_name) // 编译时报错
+        static inline string Compile_Error(const string &file_name) // 编译时报错
         {
             return AddSuffix(file_name, ".compiler_error");
         }
 
         // 运行时报错
-        static string StdError(const string &file_name) // 运行时报错
+        static inline string StdError(const string &file_name) // 运行时报错
         {
             return AddSuffix(file_name, ".stderr");
         }
-        static string Stdout(const string &file_name) // 编译时报错
+        static inline string Stdout(const string &file_name) // 编译时报错
         {
             return AddSuffix(file_name, ".stdout");
         }
 
-        static string Stdin(const string &file_name) // 编译时报错
+        static inline string Stdin(const string &file_name) // 编译时报错
         {
             return AddSuffix(file_name, ".stdin");
         }
     };
-
+    //处理文件的类
     class FileUtil
     {
     public:
+        //判断文件是否存在
         static bool Exists(const string &path)
         {
             // stat来判断文件是否存在
@@ -118,6 +120,7 @@ namespace ns_util
             {
                 // 没有被打开成功
                 ofs.close();
+                
                 return false;
             }
             ofs.write(source.c_str(), source.size());
@@ -156,7 +159,7 @@ namespace ns_util
         }
     };
 
-    class Mysql
+    class MySQL
     {
     private:
         string _host;
@@ -170,13 +173,13 @@ namespace ns_util
         MYSQL_RES *res = nullptr;
 
     public:
-        Mysql(const string host, const int port, const string db, const string user, const string passwd)
+        MySQL(const string host, const int port, const string db, const string user, const string passwd)
             : _host(host), _port(port), _db(db), _user(user), _passwd(passwd)
         {
             my = mysql_init(nullptr);                                                                                      // 创建一个mysql句柄
             assert(mysql_real_connect(my, _host.c_str(), _user.c_str(), _passwd.c_str(), _db.c_str(), _port, nullptr, 0)); // 连接数据库
         }
-        ~Mysql()
+        ~MySQL()
         {
             mysql_free_result(res); // 清理结果
             mysql_close(my);        // 关闭mysql链接

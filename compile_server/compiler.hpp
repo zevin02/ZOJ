@@ -42,7 +42,6 @@ namespace ns_compiler
             if (pid < 0)
             {
                 // 失败,
-                LOG(ERROR) << "fork() error" << endl; //
                 throw CompilerException(LogHeader(ERROR), "fork() error");
 
                 return false;
@@ -58,7 +57,7 @@ namespace ns_compiler
                 int _stderr = open(PathUtil::Compile_Error(code_filename).c_str(), O_CREAT | O_WRONLY, 0644); // 创建一个错误文件
                 if (_stderr < 0)
                 {
-                    LOG(WARNING) << "haven't create stderr file" << endl; //
+                    // LOG(WARNING) << "haven't create stderr file" << endl; //
                     throw CompilerException(LogHeader(ERROR), "haven't create stderr file");
 
                     exit(2); // 打开文件失败了
@@ -69,6 +68,7 @@ namespace ns_compiler
                 //-D就是添加了一个宏，在对文件编译的时候，默认就把COMPILE——ONLINE这个宏给添加上了
                 execlp("g++", "g++", ns_util::PathUtil::Src(code_filename).c_str(), "-o", ns_util::PathUtil::Extension(code_filename).c_str(), "-std=c++11", "-D", "COMPLER_ONLINE", nullptr);
                 // LOG(ERROR) << "executing g++ fails,maybe parameter has wrong" << endl;
+                //执行execl出错才抛异常
                 throw CompilerException(LogHeader(ERROR), "executing g++ fails,maybe parameter has wrong");//抛异常
 
                 exit(1); // 退出
@@ -87,7 +87,6 @@ namespace ns_compiler
                 else
                 {
                     LOG(ERROR) << "Compilation failed,didn't create executable file" << endl;
-                    // throw CompilerException(LogHeader(ERROR), "Compilation failed,didn't create executable file");
 
                     return false;
                 }

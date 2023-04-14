@@ -5,11 +5,11 @@ using namespace std;
 #include <hiredis/hiredis.h>
 #include <vector>
 #include <map>
-class Myredis
+class MyRedis
 {
 private:
     redisContext *c;
-    redisReply *pm_rr;
+    redisReply *reply_;
 
 private:
     void connect() // 连接
@@ -23,76 +23,76 @@ private:
                 printf("cant allocate redis context\n");
         }
     }
-    void disconnect() // 断开连接
+    void disConnect() // 断开连接
     {
         redisFree(c);
-        freeReplyObject(pm_rr);
+        freeReplyObject(reply_);
     }
 
-    redisReply *execute_command(string command) // 执行命令
+    redisReply *executeCommand(string command) // 执行命令
     {
 
-        pm_rr = (redisReply *)redisCommand(c, command.c_str());
+        reply_ = (redisReply *)redisCommand(c, command.c_str());
 
-        if (pm_rr == NULL)
+        if (reply_ == NULL)
         {
             fprintf(stderr, "Can't execute redis command: %s\n", command.c_str());
             redisFree(c);
             exit(1);
         }
-        if (pm_rr->type == REDIS_REPLY_ERROR)
+        if (reply_->type == REDIS_REPLY_ERROR)
         {
-            fprintf(stderr, "Redis command failed: %s\n", pm_rr->str);
+            fprintf(stderr, "Redis command failed: %s\n", reply_->str);
             freeReplyObject(c);
             exit(1);
         }
 
-        return pm_rr;
+        return reply_;
     }
 
 public:
-    Myredis()
+    MyRedis()
     {
         connect();
     }
-    ~Myredis()
+    ~MyRedis()
     {
-        disconnect();
+        disConnect();
     }
 
-    bool adddata(string command) // 所有的向redis里面添加数据的都调用这个
+    bool addData(const string &command) // 所有的向redis里面添加数据的都调用这个
     {
-        pm_rr = execute_command(command);
-        return pm_rr ? true : false;
+        reply_ = executeCommand(command);
+        return reply_ ? true : false;
     }
-    bool exists(string command) // 判断某个key是否在数据库里面
+    bool exists(const string& command) // 判断某个key是否在数据库里面
     {
-        pm_rr = (redisReply *)redisCommand(c, command.c_str());
-        return pm_rr->integer; //
+        reply_ = (redisReply *)redisCommand(c, command.c_str());
+        return reply_->integer; //
     }
-    vector<string> multipledata(string command) // 获得多个字符串
+    vector<string> getMultipleData(const string& command) // 获得多个字符串
     {
-        pm_rr = (redisReply *)execute_command(command);
+        reply_ = (redisReply *)executeCommand(command);
 
-        // string s = pm_rr->str;
-        size_t size = pm_rr->elements;
+        // string s = reply_->str;
+        size_t size = reply_->elements;
         vector<string> ret;
         for (int i = 0; i < size; i++)
         {
-            string s = (pm_rr->element[i])->str;
+            string s = (reply_->element[i])->str;
             ret.push_back(move(s));
         }
         return ret;
     }
-    string singledata(string command) // 这个地方只获得一个字符串
+    string getSingleData(const string& command) // 这个地方只获得一个字符串
     {
-        pm_rr = (redisReply *)execute_command(command);
-        return pm_rr->str;
+        reply_ = (redisReply *)executeCommand(command);
+        return reply_->str;
     }
 
-    void del(string command) // 删除数据库中的一个key
+    void del(const string& command) // 删除数据库中的一个key
     {
-        execute_command(command);
+        executeCommand(command);
     }
 
 };
