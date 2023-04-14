@@ -162,37 +162,39 @@ namespace ns_util
     class MySQL
     {
     private:
-        string _host;
-        int _port;
-        string _db;
-        string _user;
-        string _passwd;
+        const char* _host;
+        const int _port;
+        const char* _db;
+        const char* _user;
+        const char* _passwd;
 
     private:
         MYSQL *my;
         MYSQL_RES *res = nullptr;
 
     public:
-        MySQL(const string host, const int port, const string db, const string user, const string passwd)
+        MySQL(const char* host, const int port, const char* db, const char* user, const char* passwd)
             : _host(host), _port(port), _db(db), _user(user), _passwd(passwd)
         {
-            my = mysql_init(nullptr);                                                                                      // 创建一个mysql句柄
-            assert(mysql_real_connect(my, _host.c_str(), _user.c_str(), _passwd.c_str(), _db.c_str(), _port, nullptr, 0)); // 连接数据库
+            my = mysql_init(nullptr);       // 创建一个mysql句柄
+            assert(mysql_real_connect(my, _host ,_user, _passwd, _db, _port, nullptr, 0)); // 连接数据库
         }
         ~MySQL()
         {
             mysql_free_result(res); // 清理结果
             mysql_close(my);        // 关闭mysql链接
         }
-        bool Query(const string &sql) // 执行其他操作
+        //执行sql操作
+        bool Query(const char* sql) // 执行其他操作
         {
-            if (mysql_query(my, sql.c_str()) != 0)
+            if (mysql_query(my, sql) != 0)
             {
                 return false;
             }
             return true;
         }
-        bool Select(const std::string &sql, std::vector<std::vector<std::string>> &data)
+        //执行select语句，提取相应的数据
+        bool Select(const char*sql, std::vector<std::vector<std::string>> &data)
         {
             if (!Query(sql))
             {
