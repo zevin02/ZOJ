@@ -4,16 +4,27 @@
 #include <signal.h>
 using namespace ns_control;
 
+void handler(int signo)
+{
+    //在这里将对应的redis的key删除
+    MyRedis rds;
+    string command="del taskList";
+    rds.del(command);
+
+    exit(0);
+}
+
 int main()
 {
     // DebugEnable(); // 把调试开关打开
 
     // 用户请求的服务器路由功能
+    Control ctrl; // ctrl实现了对客户端需要功能的路由
 
     httplib::Server svr;
-    Control ctrl; // ctrl实现了对客户端需要功能的路由
     // 用户要获取所有的题目列表
     // mysql版本
+    signal(SIGINT, handler);
     try
     {
 

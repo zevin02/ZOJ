@@ -46,6 +46,10 @@ namespace ns_model
         }
         ~Model()
         {
+            //修改
+            //执行完之后，把相应的tasklist这个key给销毁掉,修改
+            string command="del taskList";
+            redis->del(command);
         }
 
         bool exportUser2Redis_Bloom() // 把用户数据导入到redis和bloom中
@@ -87,84 +91,114 @@ namespace ns_model
             }
             return false;
         }
+        bool exportTaskList2Redis()
+        {
+            //把mysql中的题目栏都导入到redis中
+            //使用一个json(number,title,star)，tasklist,
+            tuple<int, string, string> q;
+            const string sql = "select number,title,star from oj_question;";
+            vector<tuple<string, string, string>> out;
+            //把这个结果序列化
+            //会出现mysql的相同数据导入多次
+            if (getQuestion(sql, out))
+            {
+                string command = "rpush taskList ";
+                for (auto t : out)
+                {
+                    string value = JsonUtil::QuestionSerialize(t);
+                    command += value;
+                    command += " ";
+                }
+                //添加到redis中
+                redis->addData(command);
+                return true;
+            }
+            return false;
+        }
+
         void loadMysql2Redis() // 把mysql的user数据导入到redis里面
         {
             try
             {
                 exportUser2Redis_Bloom(); // 把mysql中的redis
-                // exportQuestionToRedis();//把题目导入到redis中，大文本文件使用redis很不好用，之后使用mongodb来进行操作修改
+                exportTaskList2Redis();   //把题目导入到redis中，大文本文件使用redis很不好用，之后使用mongodb来进行操作修改
             }
             catch (const Exception &e)
             {
                 cout << e.what() << endl;
             }
         }
-
-        bool getQuestion(const string sql, vector<Question> &out) //从数据库里面获得题目信息
+        // getAllField说明是需要所有的参数
+        bool getQuestion(const string &sql, vector<tuple<string, string, string>> &out)
         {
-
             vector<vector<string>> data;
             if (mysql->Select(sql.c_str(), data))
             {
                 for (int i = 0; i < data.size(); i++)
                 {
-                    Question q;
-                    q.number = data[i][0]; // 获取第一列的数据
-                    q.title = data[i][1];
-                    q.star = data[i][2];
-                    q.desc = data[i][3];
-                    q.header = data[i][4];
+                    string number = data[i][0];
+                    string title = data[i][1];
+                    string star = data[i][2];
 
-                    q.tail = data[i][5];
-
-                    q.cpulimit = stoi(data[i][6]);
-
-                    q.memlimit = stoi(data[i][7]);
-
-                    out.push_back(move(q)); // 移动构造，直接把q的值放进去不弄一个新的对象出来
+                    tuple<string, string, string> t(number, title, star);
+                    out.push_back(move(t));
                 }
                 return true;
             }
+            return false;
+        }
+        //从数据库中获得一道题目具体的信息
+        bool getTaskDetail(const string &sql, Question &out) //从数据库里面获得题目信息
+        {
 
+            vector<vector<string>> data;
+            if (mysql->Select(sql.c_str(), data))
+            {
+                Question q;
+                q.number = data[0][0]; // 获取第一列的数据
+                q.title = data[0][1];
+                q.star = data[0][2];
+
+                q.desc = data[0][3];
+                q.header = data[0][4];
+                q.tail = data[0][5];
+                q.cpulimit = stoi(data[0][6]);
+                q.memlimit = stoi(data[0][7]);
+                out = move(q);
+
+                return true;
+            }
             return false;
         }
         //查看题目列表
-        bool getQuestionList(vector<Question> &out) // 获得所有题目再根据登陆人的身份查看自己的题库
+        bool getQuestionList(vector<tuple<string,string,string>> &out) // 获得所有题目再根据登陆人的身份查看自己的题库
         {
-            const string sql = "select * from oj_question;";
-            // const string sql="select * from some_question";
-            if (getQuestion(sql, out))
+            // const string sql = "select number,title,star from oj_question;"; //我们只需要查询3个field即可
+            // 从redis中读取缓存数据
+            string command="lrange taskList 0 -1";
+            //从redis中读取缓存的题目，读出来的都是一个json串
+            vector<string> taskList=redis->getMultipleData(command);
+            for(auto& json:taskList)
             {
-                return true;
+                tuple<string,string,string> t=JsonUtil::TaskDeSerialize(json);
+                out.emplace_back(t);
             }
-            else
-            {
-                throw SqlException(LogHeader(ERROR), "获得题库失败", sql);
-                return false;
-            }
+            return true;
         }
         //根据题目名获得指定的题目
-        bool getSpecifyQuestion(string number, Question &q) // 获得一个题目
+        bool getSpecifyQuestion(string number, Question &out) // 获得一个题目
         {
 
-            bool res = false;
-            string sql = "select * from oj_question where number="+number+";";
-            vector<Question> out;
-            if (getQuestion(sql, out))
+            string sql = "select * from oj_question where number=" + number + ";";
+            if (getTaskDetail(sql, out))
             {
-                if (out.size() == 1)
-                {
-                    q = out[0];
-                    LOG(INFO) << "get task:"<<number<<" success" << endl; //输出打印用户成功的日志消息
-                    
-                    res = true;
-                }
+                LOG(INFO) << "get task:" << number << " success" << endl; //输出打印用户成功的日志消息
+                return true;
             }
             else
             {
                 throw SqlException(LogHeader(ERROR), "get task:" + number + "fail", sql);
             }
-            return res;
         }
 
         bool Register(const string &injson, string *out) // 注册，在布隆过滤器和redis里面进行两次对数据进行过滤

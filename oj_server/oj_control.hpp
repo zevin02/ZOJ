@@ -253,13 +253,13 @@ namespace ns_control
         }
         bool GetAllQuestions(string *html) // 根据题目数据构建网页
         {
-            vector<Question> all;
+            vector<tuple<string,string,string>> all;
             if (_model.getQuestionList(all))
             {
                 // 获得成功,将所有的题目数据构成一个网页
                 // 将所有获得的数据按照序号从小到大进行排序
-                sort(all.begin(), all.end(), [](const Question &s1, const Question &s2)
-                     { return stoi(s1.number) < stoi(s2.number); }); // 使用Lambda表达式
+                // sort(all.begin(), all.end(), [](const tuple<string,string,string> &s1, const tuple<string,string,string> &s2)
+                //      { return stoi(get<0>(s1)) < stoi(get<0>(s2)); }); // 使用Lambda表达式
                 _view.AllExpand(all, html);
 
                 return true;
